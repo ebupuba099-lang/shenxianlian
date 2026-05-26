@@ -1,7 +1,6 @@
 name: 神仙连每日生成
 on:
   schedule:
-    # 每天06:27 (UTC+8) = UTC 22:27
     - cron: '27 22 * * *'
   workflow_dispatch:
 
@@ -25,16 +24,14 @@ jobs:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
           GIST_ID: ce3470b6f88383f2a26791eb2c55e2e4
         run: |
+          mkdir -p data
+          curl -s -H "Authorization: token $GIST_TOKEN" \
+            "https://api.github.com/gists/$GIST_ID" > /tmp/gist.json
           python3 -c "
-          import json, urllib.request, os
-          req = urllib.request.Request(
-              f'https://api.github.com/gists/{os.environ["GIST_ID"]}',
-              headers={'Authorization': f'token {os.environ["GIST_TOKEN"]}'}
-          )
-          resp = urllib.request.urlopen(req)
-          data = json.loads(resp.read())
+          import json
+          with open('/tmp/gist.json') as f:
+              data = json.load(f)
           content = data['files']['sxl_data.json']['content']
-          os.makedirs('data', exist_ok=True)
           with open('data/sxl_data.json', 'w') as f:
               f.write(content)
           print('Synced data/sxl_data.json from Gist')
