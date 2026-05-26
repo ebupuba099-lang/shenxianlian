@@ -870,25 +870,18 @@ async function fetchFromBin() {
         if (resp.ok) return await resp.json();
     } catch(e) { console.warn('同域文件失败:', e); }
     try {
-        const resp = await fetch('https://gist.githubusercontent.com/ebupuba099-lang/' + GIST_ID + '/raw/' + GIST_FILENAME);
         if (resp.ok) return await resp.json();
     } catch(e) { console.warn('Gist raw失败:', e); }
-    const resp = await fetch('https://api.github.com/gists/' + GIST_ID, {
-        headers: { 'Authorization': 'token ' + GIST_TOKEN }
     });
     if (!resp.ok) throw new Error('拉取失败: ' + resp.status);
     const data = await resp.json();
-    return JSON.parse(data.files[GIST_FILENAME].content);
 }
 
 // 推送本地数据到远端（静默，失败不弹窗）
 function pushToRemote() {
     if (!syncOn) return;
     const pushData = { period: S.period, sequences: S.sequences, winning: S.winning, history: S.history, watermark: S.watermark, lastUpdate: Date.now() };
-    fetch('https://api.github.com/gists/' + GIST_ID, {
         method: 'PATCH',
-        headers: { 'Authorization': 'token ' + GIST_TOKEN, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(pushData) } } })
     }).catch(() => { console.warn('静默推送失败'); });
 }
 
@@ -918,14 +911,11 @@ async function syncLoad() {
 
 // 把本地数据推送到云端
 ;
-    const body = JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(pushData) } } });
-    const headers = { 'Authorization': 'token ' + GIST_TOKEN, 'Content-Type': 'application/json' };
     
     // 尝试直接API（5秒超时）
     try {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 5000);
-        const resp = await fetch('https://api.github.com/gists/' + GIST_ID, { method: 'PATCH', headers, body, signal: ctrl.signal });
         clearTimeout(timer);
         if (resp.ok) { btn.textContent = '✅ 更新成功'; setTimeout(() => { btn.textContent = '⬆️ 更新数据'; btn.disabled = false; }, 2000); return; }
     } catch(e) { console.warn('API推送超时或失败:', e.message); }
@@ -933,7 +923,6 @@ async function syncLoad() {
     // 所有网络方案失败，复制到剪贴板
     const jsonStr = JSON.stringify(pushData, null, 2);
     try { await navigator.clipboard.writeText(jsonStr); } catch(e) {}
-    window.open('https://gist.github.com/ebupuba099-lang/' + GIST_ID + '/edit', '_blank');
     alert('网络无法直接推送。\n数据已复制到剪贴板！\n请在弹出的页面中粘贴替换后点Update');
     btn.textContent = '⬆️ 更新数据'; btn.disabled = false;
 }
