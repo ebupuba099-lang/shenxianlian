@@ -13,7 +13,7 @@ from datetime import datetime
 from urllib.request import Request, urlopen
 
 GIST_TOKEN = os.environ.get('GIST_TOKEN', '')
-GIST_ID = 'b5df31cd9ef75152e7e9f880f22d7eb6'
+GIST_ID = 'ce3470b6f88383f2a26791eb2c55e2e4'
 GIST_FILENAME = 'sxl_data.json'
 GIST_API = f'https://api.github.com/gists/{GIST_ID}'
 
