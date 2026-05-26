@@ -861,26 +861,22 @@ function updateWinningBtnText() {
 const GIST_TOKEN = 'ghp_TnwoxT' + 'oiMPw48ktn' + 'gH8bvTyKiidBIh0ZDW4v';
 const GIST_ID = 'ce3470b6f88383f2a26791eb2c55e2e4';
 const GIST_FILENAME = 'sxl_data.json';
-const LOCAL_DATA_URL = 'data/sxl_data.json';  // 同域静态文件，国内100%可访问
-const GIST_RAW_URL = 'https://gist.githubusercontent.com/ebupuba099-lang/' + GIST_ID + '/raw/' + GIST_FILENAME;
+const LOCAL_DATA_URL = 'data/sxl_data.json';
 
 let syncOn = false;
 let pollTimer = null;
 let lastRemoteUpdate = 0;
 
-// 从远端拉取数据（优先同域静态文件 → raw URL → API）
+// 从远端拉取数据（优先同域文件，免认证）
 async function fetchFromBin() {
-    // 方案1: 同域静态文件（100%可访问，GitHub Actions自动更新）
     try {
-        const resp = await fetch(LOCAL_DATA_URL + '?t=' + Date.now()); // 加时间戳防缓存
+        const resp = await fetch(LOCAL_DATA_URL + '?t=' + Date.now());
         if (resp.ok) return await resp.json();
-    } catch(e) { console.warn('本地数据文件读取失败:', e); }
-    // 方案2: Gist raw URL（走CDN，免认证）
+    } catch(e) { console.warn('同域文件失败:', e); }
     try {
-        const resp = await fetch(GIST_RAW_URL);
+        const resp = await fetch('https://gist.githubusercontent.com/ebupuba099-lang/' + GIST_ID + '/raw/' + GIST_FILENAME);
         if (resp.ok) return await resp.json();
-    } catch(e) { console.warn('Raw URL读取失败:', e); }
-    // 方案3: GitHub API（需认证，国内可能被墙）
+    } catch(e) { console.warn('Gist raw失败:', e); }
     const resp = await fetch('https://api.github.com/gists/' + GIST_ID, {
         headers: { 'Authorization': 'token ' + GIST_TOKEN }
     });
@@ -889,87 +885,34 @@ async function fetchFromBin() {
     return JSON.parse(data.files[GIST_FILENAME].content);
 }
 
-// 推送本地数据到远端（GitHub Gist - 静默推送，失败不弹窗）
+// 推送本地数据到远端（静默，失败不弹窗）
 function pushToRemote() {
     if (!syncOn) return;
-    const pushData = {
-        period: S.period,
-        sequences: S.sequences,
-        winning: S.winning,
-        history: S.history,
-        watermark: S.watermark,
-        lastUpdate: Date.now()
-    };
+    const pushData = { period: S.period, sequences: S.sequences, winning: S.winning, history: S.history, watermark: S.watermark, lastUpdate: Date.now() };
     fetch('https://api.github.com/gists/' + GIST_ID, {
         method: 'PATCH',
-        headers: {
-            'Authorization': 'token ' + GIST_TOKEN,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            files: {
-                [GIST_FILENAME]: {
-                    content: JSON.stringify(pushData)
-                }
-            }
-        })
-    }).catch(() => {
-        console.warn('静默推送失败（国内网络可能无法访问API）');
-    });
+        headers: { 'Authorization': 'token ' + GIST_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(pushData) } } })
+    }).catch(() => { console.warn('静默推送失败'); });
 }
-
 
 // ========== 云同步弹窗操作 ==========
-function showSyncModal() {
-    document.getElementById('syncModal').style.display = 'flex';
-}
-function closeSyncModal() {
-    document.getElementById('syncModal').style.display = 'none';
-}
+function showSyncModal() { document.getElementById('syncModal').style.display = 'flex'; }
+function closeSyncModal() { document.getElementById('syncModal').style.display = 'none'; }
 
-// 从云端加载数据覆盖本地（优先同域文件 → raw URL → API）
+// 从云端加载数据覆盖本地
 async function syncLoad() {
     const btn = document.getElementById('syncLoadBtn');
-    btn.textContent = '⏳ 加载中...';
-    btn.disabled = true;
+    btn.textContent = '⏳ 加载中...'; btn.disabled = true;
     try {
-        let cloudData;
-        // 方案1: 同域静态文件（GitHub Actions自动更新，国内100%可访问）
-        try {
-            const resp = await fetch(LOCAL_DATA_URL + '?t=' + Date.now());
-            if (resp.ok) cloudData = await resp.json();
-        } catch(e1) { console.warn('同域文件失败:', e1); }
-        // 方案2: Gist raw URL
-        if (!cloudData) {
-            try {
-                const resp = await fetch(GIST_RAW_URL);
-                if (resp.ok) cloudData = await resp.json();
-            } catch(e2) { console.warn('Raw URL失败:', e2); }
-        }
-        // 方案3: GitHub API
-        if (!cloudData) {
-            const resp = await fetch('https://api.github.com/gists/' + GIST_ID, {
-                headers: { 'Authorization': 'token ' + GIST_TOKEN }
-            });
-            if (!resp.ok) throw new Error('拉取失败: ' + resp.status);
-            const data = await resp.json();
-            cloudData = JSON.parse(data.files[GIST_FILENAME].content);
-        }
-        
-        // 覆盖本地数据
+        const cloudData = await fetchFromBin();
         if (cloudData.period !== undefined) S.period = cloudData.period;
         if (cloudData.sequences) S.sequences = cloudData.sequences;
         if (cloudData.winning !== undefined) S.winning = cloudData.winning;
         if (cloudData.history) S.history = cloudData.history;
         if (cloudData.watermark) S.watermark = cloudData.watermark;
-        
-        saveDataLocal();
-        updatePeriod();
-        updatePreview();
-        renderHistoryList();
-        renderPosterHistory();
+        saveDataLocal(); updatePeriod(); updatePreview(); renderHistoryList(); renderPosterHistory();
         if (S.winning) document.getElementById('winningInput').value = S.winning;
-        
         btn.textContent = '✅ 加载成功';
         setTimeout(() => { btn.textContent = '⬇️ 加载已有数据'; btn.disabled = false; }, 2000);
     } catch(e) {
@@ -982,62 +925,26 @@ async function syncLoad() {
 // 把本地数据推送到云端
 async function syncPush() {
     const btn = document.getElementById('syncPushBtn');
-    btn.textContent = '⏳ 更新中...';
-    btn.disabled = true;
-    const pushData = {
-        period: S.period,
-        sequences: S.sequences,
-        winning: S.winning,
-        history: S.history,
-        watermark: S.watermark,
-        lastUpdate: Date.now()
-    };
-    const body = JSON.stringify({
-        files: { [GIST_FILENAME]: { content: JSON.stringify(pushData) } }
-    });
-    const headers = {
-        'Authorization': 'token ' + GIST_TOKEN,
-        'Content-Type': 'application/json'
-    };
+    btn.textContent = '⏳ 更新中...'; btn.disabled = true;
+    const pushData = { period: S.period, sequences: S.sequences, winning: S.winning, history: S.history, watermark: S.watermark, lastUpdate: Date.now() };
+    const body = JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(pushData) } } });
+    const headers = { 'Authorization': 'token ' + GIST_TOKEN, 'Content-Type': 'application/json' };
     
-    // 方案1: 直接调用GitHub API（海外网络可用）
+    // 尝试直接API（5秒超时）
     try {
-        const resp = await fetch('https://api.github.com/gists/' + GIST_ID, {
-            method: 'PATCH', headers, body
-        });
-        if (resp.ok) {
-            btn.textContent = '✅ 更新成功';
-            setTimeout(() => { btn.textContent = '⬆️ 更新数据'; btn.disabled = false; }, 2000);
-            return;
-        }
-    } catch(e) { console.warn('直接API失败:', e.message); }
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 5000);
+        const resp = await fetch('https://api.github.com/gists/' + GIST_ID, { method: 'PATCH', headers, body, signal: ctrl.signal });
+        clearTimeout(timer);
+        if (resp.ok) { btn.textContent = '✅ 更新成功'; setTimeout(() => { btn.textContent = '⬆️ 更新数据'; btn.disabled = false; }, 2000); return; }
+    } catch(e) { console.warn('API推送超时或失败:', e.message); }
     
-    // 方案2: 通过GitHub镜像代理（国内可用）
-    const mirrors = [
-        'https://ghp.ci/',
-        'https://mirror.ghproxy.com/',
-        'https://gh-proxy.com/',
-    ];
-    for (const mirror of mirrors) {
-        try {
-            const resp = await fetch(mirror + 'https://api.github.com/gists/' + GIST_ID, {
-                method: 'PATCH', headers, body
-            });
-            if (resp.ok) {
-                btn.textContent = '✅ 更新成功';
-                setTimeout(() => { btn.textContent = '⬆️ 更新数据'; btn.disabled = false; }, 2000);
-                return;
-            }
-        } catch(e) { console.warn('镜像' + mirror + '失败:', e.message); }
-    }
-    
-    // 方案3: 所有网络方案失败，复制数据到剪贴板 + 打开Gist编辑页
+    // 所有网络方案失败，复制到剪贴板
     const jsonStr = JSON.stringify(pushData, null, 2);
     try { await navigator.clipboard.writeText(jsonStr); } catch(e) {}
     window.open('https://gist.github.com/ebupuba099-lang/' + GIST_ID + '/edit', '_blank');
-    alert('网络受限无法直接推送。\n数据已复制到剪贴板！\n\n请在弹出的Gist编辑页面中：\n1. 全选并删除原有内容\n2. 粘贴剪贴板数据\n3. 点击 Update secret gist');
-    btn.textContent = '⬆️ 更新数据';
-    btn.disabled = false;
+    alert('网络无法直接推送。\n数据已复制到剪贴板！\n请在弹出的页面中粘贴替换后点Update');
+    btn.textContent = '⬆️ 更新数据'; btn.disabled = false;
 }
 
 // 合并远端数据
