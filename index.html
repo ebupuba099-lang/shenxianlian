@@ -856,7 +856,7 @@ function updateWinningBtnText() {
     btn.textContent = '中' + total + '粒';
 }
 
-// ========== JSONBin硬编码云同步 ==========
+// ========== GitHub Gist云同步 ==========
 const GIST_TOKEN = 'ghp_TnwoxT' + 'oiMPw48ktn' + 'gH8bvTyKiidBIh0ZDW4v';
 const GIST_ID = 'b5df31cd9ef75152e7e9f880f22d7eb6';
 const GIST_FILENAME = 'sxl_data.json';
@@ -865,17 +865,17 @@ let syncOn = false;
 let pollTimer = null;
 let lastRemoteUpdate = 0;
 
-// 从远端拉取数据
+// 从远端拉取数据（GitHub Gist）
 async function fetchFromBin() {
-    const resp = await fetch('https://api.jsonbin.io/v3/b/' + HARDCODED_BIN_ID + '/latest', {
-        headers: { 'X-Master-Key': HARDCODED_API_KEY }
+    const resp = await fetch('https://api.github.com/gists/' + GIST_ID, {
+        headers: { 'Authorization': 'token ' + GIST_TOKEN }
     });
     if (!resp.ok) throw new Error('拉取失败: ' + resp.status);
     const data = await resp.json();
-    return data.record;
+    return JSON.parse(data.files[GIST_FILENAME].content);
 }
 
-// 推送本地数据到远端
+// 推送本地数据到远端（GitHub Gist）
 function pushToRemote() {
     if (!syncOn) return;
     fetch('https://api.github.com/gists/' + GIST_ID, {
@@ -885,12 +885,18 @@ function pushToRemote() {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            period: S.period,
-            sequences: S.sequences,
-            winning: S.winning,
-            history: S.history,
-            watermark: S.watermark,
-            lastUpdate: Date.now()
+            files: {
+                [GIST_FILENAME]: {
+                    content: JSON.stringify({
+                        period: S.period,
+                        sequences: S.sequences,
+                        winning: S.winning,
+                        history: S.history,
+                        watermark: S.watermark,
+                        lastUpdate: Date.now()
+                    })
+                }
+            }
         })
     }).catch(() => {
         console.warn('推送失败');
