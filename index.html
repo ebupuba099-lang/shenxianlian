@@ -859,19 +859,34 @@ function updateWinningBtnText() {
 
 // ========== GitHub Gist云同步 ==========
 const GIST_TOKEN = 'ghp_TnwoxT' + 'oiMPw48ktn' + 'gH8bvTyKiidBIh0ZDW4v';
-const GIST_ID = 'b5df31cd9ef75152e7e9f880f22d7eb6';
+const GIST_ID = 'ce3470b6f88383f2a26791eb2c55e2e4';
 const GIST_FILENAME = 'sxl_data.json';
+const LOCAL_DATA_URL = 'data/sxl_data.json';  // 同域静态文件，国内100%可访问
 const GIST_RAW_URL = 'https://gist.githubusercontent.com/ebupuba099-lang/' + GIST_ID + '/raw/' + GIST_FILENAME;
 
 let syncOn = false;
 let pollTimer = null;
 let lastRemoteUpdate = 0;
 
-// 从远端拉取数据（GitHub Gist - 用raw URL，免认证，国内可访问）
+// 从远端拉取数据（优先同域静态文件 → raw URL → API）
 async function fetchFromBin() {
-    const resp = await fetch(GIST_RAW_URL);
+    // 方案1: 同域静态文件（100%可访问，GitHub Actions自动更新）
+    try {
+        const resp = await fetch(LOCAL_DATA_URL + '?t=' + Date.now()); // 加时间戳防缓存
+        if (resp.ok) return await resp.json();
+    } catch(e) { console.warn('本地数据文件读取失败:', e); }
+    // 方案2: Gist raw URL（走CDN，免认证）
+    try {
+        const resp = await fetch(GIST_RAW_URL);
+        if (resp.ok) return await resp.json();
+    } catch(e) { console.warn('Raw URL读取失败:', e); }
+    // 方案3: GitHub API（需认证，国内可能被墙）
+    const resp = await fetch('https://api.github.com/gists/' + GIST_ID, {
+        headers: { 'Authorization': 'token ' + GIST_TOKEN }
+    });
     if (!resp.ok) throw new Error('拉取失败: ' + resp.status);
-    return await resp.json();
+    const data = await resp.json();
+    return JSON.parse(data.files[GIST_FILENAME].content);
 }
 
 // 推送本地数据到远端（GitHub Gist - 静默推送，失败不弹窗）
@@ -912,23 +927,26 @@ function closeSyncModal() {
     document.getElementById('syncModal').style.display = 'none';
 }
 
-// 从云端加载数据覆盖本地（用raw URL，免认证，国内可访问）
+// 从云端加载数据覆盖本地（优先同域文件 → raw URL → API）
 async function syncLoad() {
     const btn = document.getElementById('syncLoadBtn');
     btn.textContent = '⏳ 加载中...';
     btn.disabled = true;
     try {
-        // 优先用raw URL（无需Token，走CDN，国内可访问）
         let cloudData;
+        // 方案1: 同域静态文件（GitHub Actions自动更新，国内100%可访问）
         try {
-            const resp = await fetch(GIST_RAW_URL);
-            if (resp.ok) {
-                cloudData = await resp.json();
-            }
-        } catch(e1) {
-            console.warn('Raw URL加载失败，尝试API:', e1);
+            const resp = await fetch(LOCAL_DATA_URL + '?t=' + Date.now());
+            if (resp.ok) cloudData = await resp.json();
+        } catch(e1) { console.warn('同域文件失败:', e1); }
+        // 方案2: Gist raw URL
+        if (!cloudData) {
+            try {
+                const resp = await fetch(GIST_RAW_URL);
+                if (resp.ok) cloudData = await resp.json();
+            } catch(e2) { console.warn('Raw URL失败:', e2); }
         }
-        // 如果raw失败，fallback到API
+        // 方案3: GitHub API
         if (!cloudData) {
             const resp = await fetch('https://api.github.com/gists/' + GIST_ID, {
                 headers: { 'Authorization': 'token ' + GIST_TOKEN }
