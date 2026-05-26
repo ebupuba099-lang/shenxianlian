@@ -260,11 +260,11 @@ function calcAutoPeriod(){
   document.querySelector('input[name=periodMode][value='+savedMode+']').checked = true;
   switchPeriodMode(savedMode);
   document.getElementById('watermark').value = S.watermark;
-  // 数据由initSync从JSONBin加载，不在IIFE中加载
+  // 数据由autoLoadFromCloud自动加载
   updatePreview();
 })();
 
-// 自动获取开奖号码已由initSync.then触发，无需额外setTimeout
+// 开奖号码由GitHub Actions自动获取
 
 // === 期数模式切换 ===
 function switchPeriodMode(mode){
@@ -893,8 +893,6 @@ function pushToRemote() {
 }
 
 // ========== 云同步弹窗操作 ==========
-function showSyncModal() { document.getElementById('syncModal').style.display = 'flex'; }
-function closeSyncModal() { document.getElementById('syncModal').style.display = 'none'; }
 
 // 从云端加载数据覆盖本地
 async function syncLoad() {
