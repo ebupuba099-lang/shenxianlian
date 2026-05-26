@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 神仙连 - 每日自动生成脚本
-每天04:27执行：生成新一期递减序列 → 保存旧期到历史 → 推送到GitHub Gist
+每天06:27执行：生成新一期递减序列 → 推送到GitHub Gist
+旧期已在22:00开奖时保存到历史，这里只需生成新期
 """
 
 import json
@@ -11,7 +12,6 @@ import os
 from datetime import datetime
 from urllib.request import Request, urlopen
 
-# ========== 配置 ==========
 GIST_TOKEN = os.environ.get('GIST_TOKEN', '')
 GIST_ID = 'b5df31cd9ef75152e7e9f880f22d7eb6'
 GIST_FILENAME = 'sxl_data.json'
@@ -22,7 +22,6 @@ def log(msg):
     print(f"[{now}] {msg}", flush=True)
 
 def fetch_gist():
-    """从Gist读取数据"""
     headers = {'User-Agent': 'Python'}
     if GIST_TOKEN:
         headers['Authorization'] = f'token {GIST_TOKEN}'
@@ -33,7 +32,6 @@ def fetch_gist():
     return json.loads(content)
 
 def push_gist(data):
-    """推送数据到Gist"""
     body = json.dumps({
         'files': {
             GIST_FILENAME: {
@@ -51,7 +49,6 @@ def push_gist(data):
     return resp.status == 200
 
 def shuffle_array(arr):
-    """Fisher-Yates洗牌"""
     a = list(arr)
     for i in range(len(a) - 1, 0, -1):
         j = random.randint(0, i)
@@ -59,7 +56,6 @@ def shuffle_array(arr):
     return a
 
 def gen_decreasing(digits):
-    """生成递减序列，与网站JS逻辑一致"""
     seq = []
     cur = list(digits)
     seq.append(''.join(str(d) for d in cur))
@@ -69,14 +65,12 @@ def gen_decreasing(digits):
     return seq
 
 def calc_auto_period():
-    """计算期数，与网站JS一致：baseDate=2026-05-11, basePeriod=2026121"""
     base = datetime(2026, 5, 11)
     now = datetime.now()
     diff = (now - base).days
     return 2026121 + diff
 
 def calc_hits(sequences, winning):
-    """计算命中，与网站JS一致"""
     hits = {}
     positions = ['千', '百', '十', '个']
     if not winning or len(winning) != 4:
@@ -127,28 +121,25 @@ def main():
         log(f"期数未变化 ({new_period} <= {old_period})，无需生成新期")
         return True
 
-    # 3. 保存旧期到历史
-    if old_sequences.get('千') or old_sequences.get('百') or old_sequences.get('十') or old_sequences.get('个'):
+    # 3. 如果旧期有数据但没在历史里，先补存（防止22:00没跑的情况）
+    has_old_sequences = any(old_sequences.get(p) for p in ['千', '百', '十', '个'])
+    if has_old_sequences:
         exist_idx = None
         for i, r in enumerate(history):
             if r.get('period') == old_period:
                 exist_idx = i
                 break
 
-        record = {
-            'period': old_period,
-            'sequences': old_sequences,
-            'winning': old_winning,
-            'hits': calc_hits(old_sequences, old_winning) if old_winning else {}
-        }
-
-        if exist_idx is not None:
-            history[exist_idx] = record
-        else:
+        if exist_idx is None:
+            record = {
+                'period': old_period,
+                'sequences': old_sequences,
+                'winning': old_winning,
+                'hits': calc_hits(old_sequences, old_winning) if old_winning else {}
+            }
             history.insert(0, record)
-
-        # 最多保留7条
-        history = history[:7]
+            history = history[:7]
+            log(f"补存旧期 {old_period} 到历史（22:00可能未执行）")
 
     # 4. 生成新一期序列
     positions = ['千', '百', '十', '个']
@@ -160,10 +151,8 @@ def main():
         new_sequences[pos] = ' '.join(seq)
 
     log(f"新期 {new_period} 生成完成")
-    log(f"  千: {new_sequences['千']}")
-    log(f"  百: {new_sequences['百']}")
-    log(f"  十: {new_sequences['十']}")
-    log(f"  个: {new_sequences['个']}")
+    for pos in positions:
+        log(f"  {pos}: {new_sequences[pos]}")
 
     # 5. 更新数据
     cloud_data['period'] = new_period
