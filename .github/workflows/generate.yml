@@ -1,0 +1,19 @@
+name: 神仙连每日生成
+on:
+  schedule:
+    # 每天04:27 (UTC+8) = UTC 20:27 前一天
+    - cron: '27 20 * * *'
+  workflow_dispatch: # 支持手动触发
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 执行生成脚本
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        run: python scripts/generate.py
