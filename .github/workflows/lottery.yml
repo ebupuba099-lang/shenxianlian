@@ -5,6 +5,9 @@ on:
     - cron: '0 14 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   lottery:
     runs-on: ubuntu-latest
@@ -25,8 +28,8 @@ jobs:
           python3 -c "
           import json, urllib.request, os
           req = urllib.request.Request(
-              f'https://api.github.com/gists/{os.environ[\"GIST_ID\"]}',
-              headers={'Authorization': f'token {os.environ[\"GIST_TOKEN\"]}'}
+              f'https://api.github.com/gists/{os.environ["GIST_ID"]}',
+              headers={'Authorization': f'token {os.environ["GIST_TOKEN"]}'}
           )
           resp = urllib.request.urlopen(req)
           data = json.loads(resp.read())
