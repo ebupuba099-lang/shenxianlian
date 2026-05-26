@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 神仙连 - 每日开奖号码自动填入脚本
-每天22:00执行：从体彩官方API获取开奖号码 → 填入当前期 → 计算命中 → 保存当期到历史 → 推送到GitHub Gist
+每天22:00执行：从体彩官方API获取开奖号码 → 填入当前期 → 推送Gist
+注意：不再计算hits，hits由用户手动管理或由generate.py在新期生成时管理
 """
 
 import json
@@ -104,26 +105,6 @@ def fetch_lottery_number(retry=3):
                     import time; time.sleep(5)
     return None
 
-def calc_hits(sequences, winning):
-    hits = {}
-    positions = ['千', '百', '十', '个']
-    if not winning or len(winning) != 4:
-        return hits
-    for i, pos in enumerate(positions):
-        seq = sequences.get(pos, '')
-        if not seq:
-            hits[pos] = 0
-            continue
-        nums = seq.split(' ')
-        target = winning[i]
-        for j in range(len(nums) - 1, -1, -1):
-            if target in nums[j]:
-                hits[pos] = len(nums[j])
-                break
-        if pos not in hits:
-            hits[pos] = 0
-    return hits
-
 def main():
     log("=" * 50)
     log("神仙连开奖号码自动填入任务开始")
@@ -157,56 +138,22 @@ def main():
             import time; time.sleep(5)
 
     current_period = cloud_data.get('period', 0)
-    sequences = cloud_data.get('sequences', {})
     history = cloud_data.get('history', [])
 
     log(f"当前期数: {current_period}, 当前开奖号: {cloud_data.get('winning') or '(空)'}")
 
-    # 3. 填入开奖号
+    # 3. 只更新winning字段，不计算hits（hits由用户手动管理）
     cloud_data['winning'] = winning4
-    hits = calc_hits(sequences, winning4)
-    hit_str = ' '.join([f"{p}中{h}粒" for p, h in hits.items()])
-    log(f"填入开奖号 {winning4} - {hit_str}")
-
-    # 4. 保存当前期到历史（关键步骤！）
-    has_sequences = any(sequences.get(p) for p in ['千', '百', '十', '个'])
-    if has_sequences:
-        exist_idx = None
-        for i, r in enumerate(history):
-            if r.get('period') == current_period:
-                exist_idx = i
-                break
-
-        record = {
-            'period': current_period,
-            'sequences': sequences,
-            'winning': winning4,
-            'hits': hits
-        }
-
-        if exist_idx is not None:
-            history[exist_idx] = record
-            log(f"更新历史记录: 期{current_period}")
-        else:
-            history.insert(0, record)
-            log(f"添加到历史: 期{current_period}")
-
-        history = history[:7]
-        cloud_data['history'] = history
-
-    # 5. 更新历史中所有已有开奖号的命中
-    for record in history:
-        if record.get('winning'):
-            record['hits'] = calc_hits(record.get('sequences', {}), record['winning'])
+    log(f"填入开奖号 {winning4}")
 
     cloud_data['lastUpdate'] = int(datetime.now().timestamp() * 1000)
 
-    # 6. 推送到Gist
+    # 4. 推送到Gist
     for attempt in range(3):
         try:
             success = push_gist(cloud_data)
             if success:
-                log(f"推送成功！期{current_period} 开奖{winning4} 已保存到历史")
+                log(f"推送成功！期{current_period} 开奖{winning4} 已更新")
                 return True
             else:
                 log(f"推送失败 (第{attempt+1}次)")
