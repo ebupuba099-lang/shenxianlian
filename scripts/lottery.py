@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 神仙连 - 每日开奖号码自动填入脚本
-每天22:00执行：从体彩官方API获取开奖号码 → 填入当前期 → 计算命中 → 推送到GitHub Gist
+每天22:00执行：从体彩官方API获取开奖号码 → 填入当前期 → 计算命中 → 保存当期到历史 → 推送到GitHub Gist
 """
 
 import json
@@ -26,7 +26,6 @@ def log(msg):
     print(f"[{now}] {msg}", flush=True)
 
 def fetch_gist():
-    """从Gist读取数据"""
     headers = {'User-Agent': 'Python'}
     if GIST_TOKEN:
         headers['Authorization'] = f'token {GIST_TOKEN}'
@@ -37,7 +36,6 @@ def fetch_gist():
     return json.loads(content)
 
 def push_gist(data):
-    """推送数据到Gist"""
     body = json.dumps({
         'files': {
             GIST_FILENAME: {
@@ -55,10 +53,6 @@ def push_gist(data):
     return resp.status == 200
 
 def fetch_lottery_number(retry=3):
-    """
-    从API获取排列五最新开奖号码（降级链）
-    返回 (draw_num, 5位号码字符串)，如 ('26135', '93925')
-    """
     apis = [
         {
             'name': '体彩官方',
@@ -93,30 +87,24 @@ def fetch_lottery_number(retry=3):
                 if not result:
                     log(f"{api['name']}: 解析返回数据失败")
                     continue
-
                 draw_num, draw_result = result
                 nums = draw_result.replace(',', ' ').split()
                 if len(nums) != 5:
                     log(f"{api['name']}: 号码格式异常 '{draw_result}'，期望5位")
                     continue
-
                 full_number = ''.join(nums)
                 if not full_number.isdigit():
                     log(f"{api['name']}: 号码包含非数字: {full_number}")
                     continue
-
                 log(f"{api['name']}获取成功: 期号{draw_num}, 号码{draw_result}")
                 return (draw_num, full_number)
-
             except Exception as e:
                 log(f"{api['name']}失败 (第{attempt+1}次): {e}")
                 if attempt < retry - 1:
                     import time; time.sleep(5)
-
     return None
 
 def calc_hits(sequences, winning):
-    """计算命中，与网站JS一致"""
     hits = {}
     positions = ['千', '百', '十', '个']
     if not winning or len(winning) != 4:
@@ -153,7 +141,6 @@ def main():
         log(f"开奖号码格式异常: {lottery_number}，取前4位: {winning4}，任务终止")
         return False
 
-    # 将API期号转为完整期数格式，如 "26135" → "2026135"
     target_period = '20' + draw_num
     log(f"开奖期号: {draw_num}, 对应期数: {target_period}, 号码: {lottery_number}, 前4位: {winning4}")
 
@@ -170,68 +157,66 @@ def main():
             import time; time.sleep(5)
 
     current_period = cloud_data.get('period', 0)
-    current_winning = cloud_data.get('winning', '')
     sequences = cloud_data.get('sequences', {})
     history = cloud_data.get('history', [])
 
-    log(f"当前期数: {current_period}, 当前开奖号: {current_winning or '(空)'}")
+    log(f"当前期数: {current_period}, 当前开奖号: {cloud_data.get('winning') or '(空)'}")
 
-    # 3. 填入开奖号码
-    updated = False
+    # 3. 填入开奖号
+    cloud_data['winning'] = winning4
+    hits = calc_hits(sequences, winning4)
+    hit_str = ' '.join([f"{p}中{h}粒" for p, h in hits.items()])
+    log(f"填入开奖号 {winning4} - {hit_str}")
 
-    # 检查当前期
-    if str(current_period) == target_period:
-        if current_winning:
-            log(f"当前期 {current_period} 已有开奖号码 '{current_winning}'，跳过")
+    # 4. 保存当前期到历史（关键步骤！）
+    has_sequences = any(sequences.get(p) for p in ['千', '百', '十', '个'])
+    if has_sequences:
+        exist_idx = None
+        for i, r in enumerate(history):
+            if r.get('period') == current_period:
+                exist_idx = i
+                break
+
+        record = {
+            'period': current_period,
+            'sequences': sequences,
+            'winning': winning4,
+            'hits': hits
+        }
+
+        if exist_idx is not None:
+            history[exist_idx] = record
+            log(f"更新历史记录: 期{current_period}")
         else:
-            cloud_data['winning'] = winning4
-            updated = True
-            hits = calc_hits(sequences, winning4)
-            hit_str = ' '.join([f"{p}中{h}粒" for p, h in hits.items()])
-            log(f"填入成功！{target_period} 期 {winning4} - {hit_str}")
-    else:
-        log(f"当前期 {current_period} 与开奖期 {target_period} 不匹配")
+            history.insert(0, record)
+            log(f"添加到历史: 期{current_period}")
 
-    # 4. 更新历史记录
-    history_changed = False
-    for record in history:
-        if str(record.get('period')) == target_period:
-            if not record.get('winning'):
-                record['winning'] = winning4
-                record['hits'] = calc_hits(record.get('sequences', {}), winning4)
-                history_changed = True
-                log(f"历史记录期 {target_period} 填入开奖号 {winning4}")
-            # 已有开奖号也重新计算命中
-            elif record.get('winning') == winning4:
-                new_hits = calc_hits(record.get('sequences', {}), winning4)
-                if new_hits != record.get('hits'):
-                    record['hits'] = new_hits
-                    history_changed = True
-            break
-
-    if updated or history_changed:
+        history = history[:7]
         cloud_data['history'] = history
-        cloud_data['lastUpdate'] = int(datetime.now().timestamp() * 1000)
 
-        # 5. 推送到Gist
-        for attempt in range(3):
-            try:
-                success = push_gist(cloud_data)
-                if success:
-                    log(f"推送成功！")
-                    return True
-                else:
-                    log(f"推送失败 (第{attempt+1}次)")
-            except Exception as e:
-                log(f"推送异常 (第{attempt+1}次): {e}")
-            if attempt < 2:
-                import time; time.sleep(5)
+    # 5. 更新历史中所有已有开奖号的命中
+    for record in history:
+        if record.get('winning'):
+            record['hits'] = calc_hits(record.get('sequences', {}), record['winning'])
 
-        log("推送彻底失败")
-        return False
-    else:
-        log("无需更新")
-        return True
+    cloud_data['lastUpdate'] = int(datetime.now().timestamp() * 1000)
+
+    # 6. 推送到Gist
+    for attempt in range(3):
+        try:
+            success = push_gist(cloud_data)
+            if success:
+                log(f"推送成功！期{current_period} 开奖{winning4} 已保存到历史")
+                return True
+            else:
+                log(f"推送失败 (第{attempt+1}次)")
+        except Exception as e:
+            log(f"推送异常 (第{attempt+1}次): {e}")
+        if attempt < 2:
+            import time; time.sleep(5)
+
+    log("推送彻底失败")
+    return False
 
 if __name__ == '__main__':
     import sys
