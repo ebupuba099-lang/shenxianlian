@@ -505,7 +505,7 @@ function renderHistoryList(){
     (r.winning ? '<span class="winning-tag">'+r.winning+'</span>' : '<span class="winning-tag" style="background:#ccc">----</span>') +
     '<div class="hits">' + pos.map(p => {
       const h = r.hits[p];
-      return '<span class="hit-tag '+(h&&h!=='-'?'':'none')+'">'+p+(h?'中'+h+'粒':'中-粒')+'</span>';
+      return '<span class="hit-tag '+(h!==undefined&&h!==null&&h!=='-'?'':'none')+'">'+p+(h!==undefined&&h!==null?'中'+h+'粒':'中-粒')+'</span>';
     }).join('') + '</div>' +
     '<button class="del-btn" onclick="deleteHistory('+idx+')">×</button>' +
     '</div>'
@@ -522,7 +522,7 @@ function renderPosterHistory(){
     (r.winning ? '<span class="winning">'+r.winning+'</span>' : '<span class="winning" style="background:#ccc">----</span>') +
     '<div class="hits">' + pos.map(p => {
       const h = r.hits[p];
-      return '<span class="hit-tag '+(h&&h!=='-'?'':'none')+'">'+p+(h?'中'+h+'粒':'中-粒')+'</span>';
+      return '<span class="hit-tag '+(h!==undefined&&h!==null&&h!=='-'?'':'none')+'">'+p+(h!==undefined&&h!==null?'中'+h+'粒':'中-粒')+'</span>';
     }).join('') + '</div></div>'
   ).join('');
 }
