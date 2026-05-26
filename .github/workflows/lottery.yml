@@ -1,0 +1,19 @@
+name: 神仙连开奖填入
+on:
+  schedule:
+    # 每天22:00 (UTC+8) = UTC 14:00
+    - cron: '0 14 * * *'
+  workflow_dispatch: # 支持手动触发
+
+jobs:
+  lottery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 执行开奖填入脚本
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        run: python scripts/lottery.py
