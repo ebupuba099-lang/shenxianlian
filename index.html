@@ -971,9 +971,9 @@ async function autoLoadFromCloud() {
     fetch('./data/sxl_data.json?' + Date.now())
         .then(r => r.json())
         .then(cloudData => {
+            console.log('云端数据:', cloudData);
             if (!cloudData || !cloudData.period) return;
-            // 只在云端数据更新时才覆盖本地
-            if (cloudData.lastUpdate && S.lastUpdate && cloudData.lastUpdate <= S.lastUpdate) return;
+            // 云端数据（由GitHub Actions维护）总是覆盖本地
             S.period = cloudData.period;
             if (cloudData.sequences) S.sequences = cloudData.sequences;
             if (cloudData.winning !== undefined) S.winning = cloudData.winning;
