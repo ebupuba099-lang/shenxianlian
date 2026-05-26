@@ -833,7 +833,7 @@ async function autoFetchAndFillWinning() {
         const exist = S.history.findIndex(r => r.period === S.period);
         if (exist >= 0) {
             S.history[exist].winning = winning;
-            S.history[exist].hits = calcHits(S.history[exist].sequences, winning);
+            S.history[exist].hits = S.history[exist].sequences ? calcHits(S.history[exist].sequences, winning) : {};
         } else {
             S.history.unshift({
                 period: S.period,
@@ -847,7 +847,7 @@ async function autoFetchAndFillWinning() {
     
     // 所有往期重新计算
     S.history.forEach(r => {
-        if (r.winning) r.hits = calcHits(r.sequences, r.winning);
+        if (r.winning && r.sequences) r.hits = calcHits(r.sequences, r.winning);
     });
     
     updatePreview();
@@ -951,7 +951,7 @@ function generateNewPeriod() {
         const exist = S.history.findIndex(r => r.period === S.period);
         if (exist >= 0) {
             S.history[exist].winning = S.winning || '';
-            S.history[exist].hits = S.winning ? calcHits(S.history[exist].sequences, S.winning) : {};
+            S.history[exist].hits = (S.winning && S.history[exist].sequences) ? calcHits(S.history[exist].sequences, S.winning) : {};
         } else {
             S.history.unshift({
                 period: S.period,
