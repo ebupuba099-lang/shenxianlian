@@ -505,7 +505,7 @@ function renderHistoryList(){
     (r.winning ? '<span class="winning-tag">'+r.winning+'</span>' : '<span class="winning-tag" style="background:#ccc">----</span>') +
     '<div class="hits">' + pos.map(p => {
       const h = r.hits[p];
-      return '<span class="hit-tag '+(h!==undefined&&h!==null&&h!=='-'?'':'none')+'">'+p+(h!==undefined&&h!==null?'中'+h+'粒':'中-粒')+'</span>';
+      return '<span class="hit-tag '+(h&&h!=='-'?'':'none')+'">'+p+(h!==undefined&&h!==null?'中'+h+'粒':'中-粒')+'</span>';
     }).join('') + '</div>' +
     '<button class="del-btn" onclick="deleteHistory('+idx+')">×</button>' +
     '</div>'
@@ -522,7 +522,7 @@ function renderPosterHistory(){
     (r.winning ? '<span class="winning">'+r.winning+'</span>' : '<span class="winning" style="background:#ccc">----</span>') +
     '<div class="hits">' + pos.map(p => {
       const h = r.hits[p];
-      return '<span class="hit-tag '+(h!==undefined&&h!==null&&h!=='-'?'':'none')+'">'+p+(h!==undefined&&h!==null?'中'+h+'粒':'中-粒')+'</span>';
+      return '<span class="hit-tag '+(h&&h!=='-'?'':'none')+'">'+p+(h!==undefined&&h!==null?'中'+h+'粒':'中-粒')+'</span>';
     }).join('') + '</div></div>'
   ).join('');
 }
@@ -639,7 +639,7 @@ async function canvasDownload(){
         const hit=r.hits[p],tw=52*R;
         ctx.fillStyle='#fff';roundRect(ctx,tx,y+8*R,tw,histItemH-16*R,3*R);ctx.fill();
         ctx.strokeStyle=hit?'#b71c1c':'#ccc';ctx.lineWidth=1*R;ctx.stroke();
-        ctx.fillStyle=hit?'#b71c1c':'#ccc';ctx.font='bold '+16*R+'px '+FF;ctx.textAlign='center';ctx.fillText(p+(hit?'中'+hit:'中-')+'粒',tx+tw/2,y+26*R);
+        ctx.fillStyle=hit?'#b71c1c':'#ccc';ctx.font='bold '+16*R+'px '+FF;ctx.textAlign='center';ctx.fillText(p+((hit!==undefined&&hit!==null&&hit!=='-')?'中'+hit:'中-')+'粒',tx+tw/2,y+26*R);
         tx+=tw+5*R;
       });
       y+=histItemH+histGap;
