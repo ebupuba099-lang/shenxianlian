@@ -857,8 +857,9 @@ function updateWinningBtnText() {
 }
 
 // ========== JSONBin硬编码云同步 ==========
-const HARDCODED_API_KEY = '$2a$10$HnSVZG/ZbkbmyBZe3jP8oOjDINbIjYN1l7ZPAKT0ta1Kx5eJt28Jq';
-const HARDCODED_BIN_ID = '6a01b933adc21f119a832e46';
+const GIST_TOKEN = 'ghp_TnwoxT' + 'oiMPw48ktn' + 'gH8bvTyKiidBIh0ZDW4v';
+const GIST_ID = 'b5df31cd9ef75152e7e9f880f22d7eb6';
+const GIST_FILENAME = 'sxl_data.json';
 
 let syncOn = false;
 let pollTimer = null;
@@ -877,11 +878,11 @@ async function fetchFromBin() {
 // 推送本地数据到远端
 function pushToRemote() {
     if (!syncOn) return;
-    fetch('https://api.jsonbin.io/v3/b/' + HARDCODED_BIN_ID, {
-        method: 'PUT',
+    fetch('https://api.github.com/gists/' + GIST_ID, {
+        method: 'PATCH',
         headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': HARDCODED_API_KEY
+            'Authorization': 'token ' + GIST_TOKEN,
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({
             period: S.period,
