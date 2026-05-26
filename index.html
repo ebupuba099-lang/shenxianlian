@@ -108,7 +108,6 @@ body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#dac6a6;m
   </div>
   <div class="header-btns">
     <span id="syncIndicator" style="font-size:12px;color:#aaa;margin-right:10px;display:none;">[同步中]</span>
-    <button class="btn btn-sync" onclick="showSyncModal()" style="background:#607d8b;color:#fff;padding:4px 12px;font-size:13px;border-radius:4px;border:none;cursor:pointer;margin-right:6px;">☁️ 云同步</button>
     <button class="btn btn-primary" onclick="downloadPoster()">下载图片</button>
   </div>
 </div>
@@ -859,9 +858,6 @@ function updateWinningBtnText() {
 }
 
 // ========== GitHub Gist云同步 ==========
-const GIST_TOKEN = 'ghp_TnwoxT' + 'oiMPw48ktn' + 'gH8bvTyKiidBIh0ZDW4v';
-const GIST_ID = 'ce3470b6f88383f2a26791eb2c55e2e4';
-const GIST_FILENAME = 'sxl_data.json';
 const LOCAL_DATA_URL = 'data/sxl_data.json';
 
 let pollTimer = null;
@@ -923,10 +919,7 @@ async function syncLoad() {
 }
 
 // 把本地数据推送到云端
-async function syncPush() {
-    const btn = document.getElementById('syncPushBtn');
-    btn.textContent = '⏳ 更新中...'; btn.disabled = true;
-    const pushData = { period: S.period, sequences: S.sequences, winning: S.winning, history: S.history, watermark: S.watermark, lastUpdate: Date.now() };
+;
     const body = JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(pushData) } } });
     const headers = { 'Authorization': 'token ' + GIST_TOKEN, 'Content-Type': 'application/json' };
     
@@ -948,10 +941,7 @@ async function syncPush() {
 }
 
 // 合并远端数据
-function mergeRemote(data) {
-    if (!data) return;
-    let updated = false;
-    if (data.period !== undefined) { S.period = data.period; updated = true; }
+
     if (data.sequences) { S.sequences = data.sequences; updated = true; }
     if (data.winning !== undefined) { S.winning = data.winning; updated = true; }
     if (data.history) { S.history = data.history; updated = true; }
@@ -989,18 +979,34 @@ function loadFromLocal() {
 }
 
 // 初始化云同步
-async function initSync() {
-    const indicator = document.getElementById('syncIndicator');
-    indicator.style.display = 'inline';
-    indicator.textContent = '[连接中...]';
-    
-    try {
-        const data = await fetchFromBin();
-        if (data) {
-            const remoteData = data.data || data;
-            mergeRemote(remoteData);
-            if (data.lastUpdate) lastRemoteUpdate = data.lastUpdate;
-        }
+async function autoLoadFromCloud() {
+    // 自动从同域数据文件加载最新数据
+    fetch('./data/sxl_data.json?' + Date.now())
+        .then(r => r.json())
+        .then(cloudData => {
+            if (!cloudData || !cloudData.period) return;
+            // 只在云端数据更新时才覆盖本地
+            if (cloudData.lastUpdate && S.lastUpdate && cloudData.lastUpdate <= S.lastUpdate) return;
+            S.period = cloudData.period;
+            if (cloudData.sequences) S.sequences = cloudData.sequences;
+            if (cloudData.winning !== undefined) S.winning = cloudData.winning;
+            if (cloudData.history) S.history = cloudData.history;
+            if (cloudData.watermark) S.watermark = cloudData.watermark;
+            S.lastUpdate = cloudData.lastUpdate || Date.now();
+            saveData(); 
+            updatePeriod(); 
+            updatePreview(); 
+            renderHistoryList(); 
+            renderPosterHistory();
+            document.getElementById('winningInput').value = S.winning || '';
+            const ind = document.getElementById('syncIndicator');
+            if(ind) ind.textContent = '已同步';
+        })
+        .catch(() => {
+            const ind = document.getElementById('syncIndicator');
+            if(ind) ind.textContent = '本地';
+        });
+}
         syncOn = true;
         indicator.textContent = '[已连接]';
         indicator.style.color = '#2e7d32';
@@ -1059,7 +1065,7 @@ window.addEventListener('DOMContentLoaded', () => {
     renderHistoryList();
     renderPosterHistory();
     document.getElementById('winningInput').value = S.winning || '';
-    initSync();
+    autoLoadFromCloud();
     const autoP = calcAutoPeriod();
     if (autoP > S.period) generateNewPeriod();
     autoFetchAndFillWinning();
@@ -1131,27 +1137,5 @@ function checkAndSwitchPeriod() {
 </script>
 
 <!-- 云同步弹窗 -->
-<div id="syncModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;" onclick="if(event.target===this)closeSyncModal()">
-  <div style="background:#fff;border-radius:12px;padding:28px 24px 20px;max-width:340px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
-    <div style="font-size:18px;font-weight:bold;color:#d32f2f;margin-bottom:4px;">☁️ 云同步</div>
-    <div style="font-size:13px;color:#999;margin-bottom:20px;">选择同步操作</div>
-    
-    <button id="syncLoadBtn" onclick="syncLoad()" style="display:block;width:100%;padding:14px;margin-bottom:12px;background:#1976d2;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
-      ⬇️ 加载已有数据
-    </button>
-    <div style="font-size:11px;color:#999;margin-top:-8px;margin-bottom:16px;">从云端拉取数据覆盖本地（换电脑时用）</div>
-    
-    <button id="syncPushBtn" onclick="syncPush()" style="display:block;width:100%;padding:14px;margin-bottom:12px;background:#388e3c;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
-      ⬆️ 更新数据
-    </button>
-    <div style="font-size:11px;color:#999;margin-top:-8px;margin-bottom:16px;">把本地数据推到云端（在主电脑操作后用）</div>
-    
-    <div style="background:#fff8e1;border-radius:6px;padding:8px 12px;margin-bottom:16px;font-size:11px;color:#f57f17;text-align:left;">
-      ⚠️ 加载会用云端数据替换本地数据<br>更新会用本地数据替换云端数据
-    </div>
-    
-    <button onclick="closeSyncModal()" style="padding:8px 32px;background:#e0e0e0;color:#666;border:none;border-radius:6px;font-size:14px;cursor:pointer;">关闭</button>
-  </div>
-</div>
 </body>
 </html>
