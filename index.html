@@ -44,8 +44,8 @@ body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#dac6a6;m
 .controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
 
 /* 开奖号码 - 单框 */
-.winning-input{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.winning-input input{width:160px;text-align:center;font-size:24px;letter-spacing:8px;font-family:'Courier New',monospace;padding:10px;background:#fff;border:2px solid #d7ccc8;border-radius:8px;color:#b71c1c;font-weight:bold}
+/* winning-input removed */
+/* winning-input input removed */
 .winning-input input:focus{outline:none;border-color:#b71c1c}
 
 /* 往期数据列表 */
@@ -170,15 +170,6 @@ body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#dac6a6;m
         <textarea id="pasteData" placeholder="粘贴格式：&#10;福气连连 2026121&#10;---------------&#10;千 24356789 4356789 435689 43589 4359 459 59 5&#10;百 47813920 4813920 413920 41320 4132 413 41 4"></textarea>
       </div>
       <button class="btn btn-primary" style="width:100%" onclick="parsePaste()">生成预览</button>
-    </div>
-    
-    <!-- 开奖号码 -->
-    <div class="card">
-      <div class="card-title">输入开奖号码</div>
-      <div class="winning-input">
-        <input type="text" id="winningInput" maxlength="4" placeholder="0000" oninput="onWinningInput()">
-        <button class="btn btn-primary" onclick="applyWinning()">计算命中</button>
-      </div>
     </div>
     
     <!-- 水印（下载时自动添加，不需要显示输入框） -->
@@ -403,43 +394,9 @@ function parsePaste(){
 }
 
 // === 开奖号码 ===
-function onWinningInput(){
-  const v = document.getElementById('winningInput').value.replace(/\D/g,'');
-  document.getElementById('winningInput').value = v;
-}
+// onWinningInput removed
 
-function applyWinning(){
-  const v = document.getElementById('winningInput').value.trim();
-  if(v.length !== 4 || !/^\d{4}$/.test(v)){showToast('请输入4位开奖号码');return;}
-  S.winning = v;
-  // 如果有当前数据，自动添加到往期
-  if(S.sequences.千 || S.sequences.百 || S.sequences.十 || S.sequences.个){
-    // 检查是否已存在同期记录
-    const exist = S.history.findIndex(r => r.period === S.period);
-    if(exist >= 0){
-      S.history[exist].winning = v;
-      S.history[exist].hits = calcHits(S.history[exist].sequences, v);
-    } else {
-      S.history.unshift({
-        period: S.period,
-        sequences: {...S.sequences},
-        winning: v,
-        hits: calcHits(S.sequences, v)
-      });
-      if(S.history.length > 7) S.history.pop();
-    }
-  }
-  // 所有往期重新计算
-  S.history.forEach(r => {
-    if(r.winning) r.hits = calcHits(r.sequences, r.winning);
-  });
-  updatePreview();
-  updateWinningBtnText();
-  // 计算总命中数
-  let total = 0;
-  ['千','百','十','个'].forEach(p => { const h = calcHits(S.sequences, v)[p]; if(h > 0) total++; });
-  showToast('已计算中' + total + '粒！');
-}
+// applyWinning removed
 
 // === 命中计算 ===
 function calcHits(sequences, winning){
@@ -466,7 +423,7 @@ function addToHistory(){
     period: S.period,
     sequences: {...S.sequences},
     winning: S.winning || '',
-    hits: S.winning ? calcHits(S.sequences, S.winning) : {}
+    hits: S.winning ? (S.history.find(r=>r.period===S.period)||{}).hits || {} : {}
   };
   S.history.unshift(record);
   if(S.history.length > 7) S.history.pop();
@@ -817,51 +774,10 @@ async function fetchLotteryNumberWithFallback() {
 }
 
 // 自动获取并填入开奖号码
-async function autoFetchAndFillWinning() {
-    const winning = await fetchLotteryNumberWithFallback();
-    if (!winning) {
-        console.log('未获取到开奖号码');
-        return;
-    }
-
-    // 填入输入框
-    document.getElementById('winningInput').value = winning;
-    S.winning = winning;
-    
-    // 如果有当前数据，自动添加到往期
-    if (S.sequences.千 || S.sequences.百 || S.sequences.十 || S.sequences.个) {
-        const exist = S.history.findIndex(r => r.period === S.period);
-        if (exist >= 0) {
-            S.history[exist].winning = winning;
-            S.history[exist].hits = S.history[exist].sequences ? calcHits(S.history[exist].sequences, winning) : {};
-        } else {
-            S.history.unshift({
-                period: S.period,
-                sequences: {...S.sequences},
-                winning: winning,
-                hits: calcHits(S.sequences, winning)
-            });
-            if (S.history.length > 7) S.history.pop();
-        }
-    }
-    
-    // 所有往期重新计算
-    S.history.forEach(r => {
-        if (r.winning && r.sequences) r.hits = calcHits(r.sequences, r.winning);
-    });
-    
-    updatePreview();
-    updateWinningBtnText();
-    showToast('自动获取开奖号: ' + winning);
-}
+// autoFetchAndFillWinning removed - data managed by GitHub Actions
 
 // 更新开奖按钮文字（显示命中数）
-function updateWinningBtnText() {
-    const btn = document.querySelector('.winning-input .btn-primary');
-    if (!btn || !S.winning || !S.sequences.千) return;
-    const hits = calcHits(S.sequences, S.winning);
-    let total = 0;
-    ['千', '百', '十', '个'].forEach(p => { if (hits[p] > 0) total++; });
+// updateWinningBtnText removed);
     btn.textContent = '中' + total + '粒';
 }
 
@@ -887,7 +803,7 @@ async function autoLoadFromCloud() {
         updatePreview(); 
         renderHistoryList(); 
         renderPosterHistory();
-        document.getElementById('winningInput').value = S.winning || '';
+        // winningInput removed
         const ind = document.getElementById('syncIndicator');
         if(ind) ind.textContent = '已同步';
     } catch(e) {
@@ -935,11 +851,11 @@ window.addEventListener('DOMContentLoaded', () => {
     updatePreview();
     renderHistoryList();
     renderPosterHistory();
-    document.getElementById('winningInput').value = S.winning || '';
+    // winningInput removed
     autoLoadFromCloud();
     const autoP = calcAutoPeriod();
     if (autoP > S.period) generateNewPeriod();
-    autoFetchAndFillWinning();
+    // autoFetchAndFillWinning removed - data managed by GitHub Actions
 });
 
 // ========== 自动期号变化检测与新期生成 ==========
@@ -951,13 +867,13 @@ function generateNewPeriod() {
         const exist = S.history.findIndex(r => r.period === S.period);
         if (exist >= 0) {
             S.history[exist].winning = S.winning || '';
-            S.history[exist].hits = (S.winning && S.history[exist].sequences) ? calcHits(S.history[exist].sequences, S.winning) : {};
+            // hits kept from data, not recalculated
         } else {
             S.history.unshift({
                 period: S.period,
                 sequences: {...S.sequences},
                 winning: S.winning || '',
-                hits: S.winning ? calcHits(S.sequences, S.winning) : {}
+                hits: S.winning ? (S.history.find(r=>r.period===S.period)||{}).hits || {} : {}
             });
             if (S.history.length > 7) S.history.pop();
         }
