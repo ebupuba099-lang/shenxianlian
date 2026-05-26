@@ -1,9 +1,9 @@
 name: 神仙连每日生成
 on:
   schedule:
-    # 每天04:27 (UTC+8) = UTC 20:27 前一天
-    - cron: '27 20 * * *'
-  workflow_dispatch: # 支持手动触发
+    # 每天06:27 (UTC+8) = UTC 22:27 前一天
+    - cron: '27 22 * * *'
+  workflow_dispatch:
 
 jobs:
   generate:
