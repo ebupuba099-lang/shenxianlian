@@ -434,7 +434,6 @@ function applyWinning(){
     if(r.winning) r.hits = calcHits(r.sequences, r.winning);
   });
   updatePreview();
-  updateWinningBtnText();
   // 计算总命中数
   let total = 0;
   ['千','百','十','个'].forEach(p => { const h = calcHits(S.sequences, v)[p]; if(h > 0) total++; });
@@ -825,8 +824,8 @@ async function autoFetchAndFillWinning() {
     }
 
     // 填入输入框
-    document.getElementById('winningInput').value = winning;
     S.winning = winning;
+    document.getElementById('winningInput').value = '';
     
     // 如果有当前数据，自动添加到往期
     if (S.sequences.千 || S.sequences.百 || S.sequences.十 || S.sequences.个) {
@@ -851,19 +850,13 @@ async function autoFetchAndFillWinning() {
     });
     
     updatePreview();
-    updateWinningBtnText();
-    showToast('自动获取开奖号: ' + winning);
+      showToast('自动获取开奖号: ' + winning);
 }
 
 // 更新开奖按钮文字（显示命中数）
 function updateWinningBtnText() {
-    const btn = document.querySelector('.winning-input .btn-primary');
-    if (!btn || !S.winning || !S.sequences.千) return;
-    const hits = calcHits(S.sequences, S.winning);
-    let total = 0;
-    ['千', '百', '十', '个'].forEach(p => { if (hits[p] > 0) total++; });
-    btn.textContent = '中' + total + '粒';
-}
+    // disabled - button always shows 计算命中
+  }
 
 // ========== 数据同步（自动从同域文件加载）==========
 let pollTimer = null;
@@ -887,7 +880,7 @@ async function autoLoadFromCloud() {
         updatePreview(); 
         renderHistoryList(); 
         renderPosterHistory();
-        document.getElementById('winningInput').value = S.winning || '';
+        document.getElementById('winningInput').value = '';
         const ind = document.getElementById('syncIndicator');
         if(ind) ind.textContent = '已同步';
     } catch(e) {
@@ -935,7 +928,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updatePreview();
     renderHistoryList();
     renderPosterHistory();
-    document.getElementById('winningInput').value = S.winning || '';
+    document.getElementById('winningInput').value = '';
     autoLoadFromCloud();
     const autoP = calcAutoPeriod();
     if (autoP > S.period) generateNewPeriod();
