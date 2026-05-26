@@ -912,7 +912,7 @@ async function syncLoad() {
         if (cloudData.history) S.history = cloudData.history;
         if (cloudData.watermark) S.watermark = cloudData.watermark;
         saveDataLocal(); updatePeriod(); updatePreview(); renderHistoryList(); renderPosterHistory();
-        if (S.winning) document.getElementById('winningInput').value = S.winning;
+        document.getElementById('winningInput').value = S.winning || '';
         btn.textContent = '✅ 加载成功';
         setTimeout(() => { btn.textContent = '⬇️ 加载已有数据'; btn.disabled = false; }, 2000);
     } catch(e) {
@@ -962,9 +962,7 @@ function mergeRemote(data) {
         updatePreview();
         renderHistoryList();
         renderPosterHistory();
-        if (S.winning) {
-            document.getElementById('winningInput').value = S.winning;
-        }
+        document.getElementById('winningInput').value = S.winning || '';
     }
 }
 
@@ -1018,7 +1016,7 @@ async function initSync() {
             if (local.winning !== undefined) S.winning = local.winning;
             if (local.history) S.history = local.history;
             updatePeriod(); updatePreview(); renderHistoryList(); renderPosterHistory();
-            if (S.winning) document.getElementById('winningInput').value = S.winning;
+            document.getElementById('winningInput').value = S.winning || '';
         }
         const ind = document.getElementById('syncIndicator');
         if (ind) { ind.textContent = '[离线]'; ind.style.color = '#ff9800'; }
@@ -1060,7 +1058,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updatePreview();
     renderHistoryList();
     renderPosterHistory();
-    if (S.winning) document.getElementById('winningInput').value = S.winning;
+    document.getElementById('winningInput').value = S.winning || '';
     initSync();
     const autoP = calcAutoPeriod();
     if (autoP > S.period) generateNewPeriod();
