@@ -912,43 +912,26 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // 生成新一期数据
 function generateNewPeriod() {
-    // 如果当前有数据，先保存到历史
-    if (S.sequences.千 || S.sequences.百 || S.sequences.十 || S.sequences.个) {
-        const exist = S.history.findIndex(r => r.period === S.period);
-        if (exist >= 0) {
-            S.history[exist].winning = S.winning || '';
-            // hits kept from original data, do not recalculate
-        } else {
-            S.history.unshift({
-                period: S.period,
-                sequences: {...S.sequences},
-                winning: S.winning || '',
-                hits: S.winning ? calcHits(S.sequences, S.winning) : {}
-            });
-            if (S.history.length > 7) S.history.pop();
-        }
-    }
-    
-    // 更新期号并自动生成新序列
+    // 生成新一期序列，历史数据已从Gist加载，不修改
     const newPeriod = calcAutoPeriod();
-    if (newPeriod > S.period) {
-        S.period = newPeriod;
-        S.winning = '';
-        // 自动生成千百十个位递减序列
-        const positions = ['千','百','十','个'];
-        positions.forEach(pos => {
-            const digits = shuffle([0,1,2,3,4,5,6,7,8,9]);
-            const selected = digits.slice(0, 8);
-            const seq = genDecreasing(selected);
-            S.sequences[pos] = seq.join(' ');
-        });
-        saveData();
-        updatePeriod();
-        updatePreview();
-        renderHistoryList();
-        renderPosterHistory();
-        showToast('已自动生成新一期: ' + S.period + '期');
-    }
+    if (newPeriod <= S.period) return;
+    
+    S.period = newPeriod;
+    S.winning = '';
+    // 自动生成千百十个位递减序列
+    const positions = ['千','百','十','个'];
+    positions.forEach(pos => {
+        const digits = shuffle([0,1,2,3,4,5,6,7,8,9]);
+        const selected = digits.slice(0, 8);
+        const seq = genDecreasing(selected);
+        S.sequences[pos] = seq.join(' ');
+    });
+    saveData();
+    updatePeriod();
+    updatePreview();
+    renderHistoryList();
+    renderPosterHistory();
+    showToast('已自动生成新一期: ' + S.period + '期');
 }
 
 // 检查是否需要生成新期（每天6点后自动切换）
