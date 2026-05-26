@@ -108,6 +108,7 @@ body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#dac6a6;m
   </div>
   <div class="header-btns">
     <span id="syncIndicator" style="font-size:12px;color:#aaa;margin-right:10px;display:none;">[同步中]</span>
+    <button class="btn btn-sync" onclick="showSyncModal()" style="background:#607d8b;color:#fff;padding:4px 12px;font-size:13px;border-radius:4px;border:none;cursor:pointer;margin-right:6px;">☁️ 云同步</button>
     <button class="btn btn-primary" onclick="downloadPoster()">下载图片</button>
   </div>
 </div>
@@ -903,6 +904,89 @@ function pushToRemote() {
     });
 }
 
+
+// ========== 云同步弹窗操作 ==========
+function showSyncModal() {
+    document.getElementById('syncModal').style.display = 'flex';
+}
+function closeSyncModal() {
+    document.getElementById('syncModal').style.display = 'none';
+}
+
+// 从云端加载数据覆盖本地
+async function syncLoad() {
+    const btn = document.getElementById('syncLoadBtn');
+    btn.textContent = '⏳ 加载中...';
+    btn.disabled = true;
+    try {
+        const resp = await fetch('https://api.github.com/gists/' + GIST_ID, {
+            headers: { 'Authorization': 'token ' + GIST_TOKEN }
+        });
+        if (!resp.ok) throw new Error('拉取失败: ' + resp.status);
+        const data = await resp.json();
+        const cloudData = JSON.parse(data.files[GIST_FILENAME].content);
+        
+        // 覆盖本地数据
+        if (cloudData.period !== undefined) S.period = cloudData.period;
+        if (cloudData.sequences) S.sequences = cloudData.sequences;
+        if (cloudData.winning !== undefined) S.winning = cloudData.winning;
+        if (cloudData.history) S.history = cloudData.history;
+        if (cloudData.watermark) S.watermark = cloudData.watermark;
+        
+        saveDataLocal();
+        updatePeriod();
+        updatePreview();
+        renderHistoryList();
+        renderPosterHistory();
+        if (S.winning) document.getElementById('winningInput').value = S.winning;
+        
+        btn.textContent = '✅ 加载成功';
+        setTimeout(() => { btn.textContent = '⬇️ 加载已有数据'; btn.disabled = false; }, 2000);
+    } catch(e) {
+        btn.textContent = '❌ 加载失败';
+        setTimeout(() => { btn.textContent = '⬇️ 加载已有数据'; btn.disabled = false; }, 2000);
+        console.error('加载失败:', e);
+    }
+}
+
+// 把本地数据推送到云端
+async function syncPush() {
+    const btn = document.getElementById('syncPushBtn');
+    btn.textContent = '⏳ 更新中...';
+    btn.disabled = true;
+    try {
+        const resp = await fetch('https://api.github.com/gists/' + GIST_ID, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': 'token ' + GIST_TOKEN,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                files: {
+                    [GIST_FILENAME]: {
+                        content: JSON.stringify({
+                            period: S.period,
+                            sequences: S.sequences,
+                            winning: S.winning,
+                            history: S.history,
+                            watermark: S.watermark,
+                            lastUpdate: Date.now()
+                        })
+                    }
+                }
+            })
+        });
+        if (!resp.ok) throw new Error('推送失败: ' + resp.status);
+        
+        btn.textContent = '✅ 更新成功';
+        setTimeout(() => { btn.textContent = '⬆️ 更新数据'; btn.disabled = false; }, 2000);
+    } catch(e) {
+        btn.textContent = '❌ 更新失败';
+        setTimeout(() => { btn.textContent = '⬆️ 更新数据'; btn.disabled = false; }, 2000);
+        console.error('推送失败:', e);
+    }
+}
+
 // 合并远端数据
 function mergeRemote(data) {
     if (!data) return;
@@ -1087,5 +1171,29 @@ function checkAndSwitchPeriod() {
     return false;
 }
 </script>
+
+<!-- 云同步弹窗 -->
+<div id="syncModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;" onclick="if(event.target===this)closeSyncModal()">
+  <div style="background:#fff;border-radius:12px;padding:28px 24px 20px;max-width:340px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+    <div style="font-size:18px;font-weight:bold;color:#d32f2f;margin-bottom:4px;">☁️ 云同步</div>
+    <div style="font-size:13px;color:#999;margin-bottom:20px;">选择同步操作</div>
+    
+    <button id="syncLoadBtn" onclick="syncLoad()" style="display:block;width:100%;padding:14px;margin-bottom:12px;background:#1976d2;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
+      ⬇️ 加载已有数据
+    </button>
+    <div style="font-size:11px;color:#999;margin-top:-8px;margin-bottom:16px;">从云端拉取数据覆盖本地（换电脑时用）</div>
+    
+    <button id="syncPushBtn" onclick="syncPush()" style="display:block;width:100%;padding:14px;margin-bottom:12px;background:#388e3c;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;">
+      ⬆️ 更新数据
+    </button>
+    <div style="font-size:11px;color:#999;margin-top:-8px;margin-bottom:16px;">把本地数据推到云端（在主电脑操作后用）</div>
+    
+    <div style="background:#fff8e1;border-radius:6px;padding:8px 12px;margin-bottom:16px;font-size:11px;color:#f57f17;text-align:left;">
+      ⚠️ 加载会用云端数据替换本地数据<br>更新会用本地数据替换云端数据
+    </div>
+    
+    <button onclick="closeSyncModal()" style="padding:8px 32px;background:#e0e0e0;color:#666;border:none;border-radius:6px;font-size:14px;cursor:pointer;">关闭</button>
+  </div>
+</div>
 </body>
 </html>
