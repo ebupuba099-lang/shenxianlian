@@ -103,6 +103,15 @@ body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#dac6a6;m
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
+<script>
+// 强制云端加载 - 在任何其他脚本之前执行
+(function(){
+    // 清除旧缓存数据
+    localStorage.removeItem('sxlData');
+    localStorage.removeItem('sxlLotteryCache');
+})();
+</script>
+
 
 <div class="header">
   <div>
