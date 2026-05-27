@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>神仙连 - 跳转中...</title>
+<style>
+body{display:flex;justify-content:center;align-items:center;height:100vh;background:#dac6a6;font-family:sans-serif;margin:0}
+.msg{color:#5d4037;font-size:18px;text-align:center;padding:20px}
+</style>
+</head>
+<body>
+<div class="msg">正在加载最新数据...<br><small>如未自动跳转，请点击<a id="link" href="#">这里</a></small></div>
+<script>
+var url = 'app.html?t=' + Date.now();
+document.getElementById('link').href = url;
+location.replace(url);
+</script>
+</body>
+</html>
