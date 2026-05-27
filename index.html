@@ -110,7 +110,8 @@ body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#dac6a6;m
     <div class="header-sub">提供排列五资料 · 打击私彩！对错勿怪！</div>
   </div>
   <div class="header-btns">
-    <span id="syncIndicator" style="font-size:12px;color:#aaa;margin-right:10px;display:none;">[同步中]</span>
+    <span id="syncIndicator" style="font-size:12px;color:#c9a96e;margin-right:10px;">刷新中...</span>
+    <button class="btn btn-secondary" onclick="refreshData()" style="font-size:12px;padding:6px 12px;">🔄 刷新数据</button>
     <button class="btn btn-primary" onclick="downloadPoster()">下载图片</button>
   </div>
 </div>
@@ -250,29 +251,16 @@ function calcAutoPeriod(){
   return 2026121 + diff;
 }
 
-// === 初始化 ===
+// === 初始化（仅UI，数据由DOMContentLoaded统一加载）===
 (function init(){
-  // banner图
   const bannerSrc = typeof BANNER_IMG_B64 !== 'undefined' ? ('data:image/jpeg;base64,' + BANNER_IMG_B64) : '';
   if(bannerSrc){
     document.getElementById('posterBannerImg').src = bannerSrc;
   }
-  // 恢复期数模式（仅UI设置，不触发数据变更）
   const savedMode = localStorage.getItem('sxlPeriodMode') || 'auto';
   periodMode = savedMode;
   document.querySelector('input[name=periodMode][value='+savedMode+']').checked = true;
   switchPeriodMode(savedMode);
-  document.getElementById('watermark').value = S.watermark;
-  // 先从localStorage恢复
-  const localData = loadFromLocal();
-  if (localData) {
-    if (localData.period !== undefined) S.period = localData.period;
-    if (localData.sequences) S.sequences = localData.sequences;
-    if (localData.winning !== undefined) S.winning = localData.winning;
-    if (localData.history) S.history = localData.history;
-    if (localData.watermark) S.watermark = localData.watermark;
-  }
-  updatePreview();
 })();
 
 // 开奖号码由GitHub Actions自动获取
@@ -838,62 +826,55 @@ function updateWinningBtnText() {
 // ========== 数据同步（自动从同域文件加载）==========
 let pollTimer = null;
 
-// 自动从云端加载最新数据（GitHub API直读，绕过CDN缓存）
+// 自动从云端加载最新数据
 const GH_API_REPO = 'ebupuba099-lang/shenxianlian';
 const GH_API_PATH = 'data/sxl_data.json';
 
+function applyCloudData(cloudData, source) {
+    console.log('云端数据加载成功[' + source + ']:', cloudData.period, '期, 开奖:', cloudData.winning || '(待开)');
+    S.period = cloudData.period;
+    if (cloudData.sequences) S.sequences = cloudData.sequences;
+    if (cloudData.winning !== undefined) S.winning = cloudData.winning;
+    if (cloudData.history) S.history = cloudData.history;
+    if (cloudData.watermark) S.watermark = cloudData.watermark;
+    S.lastUpdate = cloudData.lastUpdate || Date.now();
+    saveDataLocal();
+    updatePeriod();
+    updatePreview();
+    renderHistoryList();
+    renderPosterHistory();
+    document.getElementById('winningInput').value = '';
+    const ind = document.getElementById('syncIndicator');
+    if (ind) ind.textContent = '已同步';
+}
+
 async function autoLoadFromCloud() {
-    // 数据源：GitHub API直读（绕过CDN）→ jsDelivr CDN → 同域文件
-    const DATA_SOURCES = [
-        { name: 'GitHub API', fetch: async () => {
-            const resp = await fetch('https://api.github.com/repos/' + GH_API_REPO + '/contents/' + GH_API_PATH, {
-                headers: { 'Accept': 'application/vnd.github.v3.raw' }
-            });
-            if (!resp.ok) throw new Error('API ' + resp.status);
-            return await resp.json();
-        }},
-        { name: 'jsDelivr', fetch: async () => {
-            const resp = await fetch('https://cdn.jsdelivr.net/gh/' + GH_API_REPO + '@main/' + GH_API_PATH + '?_t=' + Date.now(), { cache: 'no-store' });
-            if (!resp.ok) throw new Error('jsDelivr ' + resp.status);
-            return await resp.json();
-        }},
-        { name: '同域', fetch: async () => {
-            const resp = await fetch('./' + GH_API_PATH + '?_t=' + Date.now(), { cache: 'no-store' });
-            if (!resp.ok) throw new Error('同域 ' + resp.status);
-            return await resp.json();
-        }}
+    // 降级链：GitHub API(绕CDN) → jsDelivr CDN → 同域文件
+    const sources = [
+        { name: 'GitHub API', url: 'https://api.github.com/repos/' + GH_API_REPO + '/contents/' + GH_API_PATH, raw: true },
+        { name: 'jsDelivr', url: 'https://cdn.jsdelivr.net/gh/' + GH_API_REPO + '@main/' + GH_API_PATH },
+        { name: '同域', url: './' + GH_API_PATH }
     ];
     
-    for (const src of DATA_SOURCES) {
+    for (const src of sources) {
         try {
-            const cloudData = await src.fetch();
+            const opts = { cache: 'no-store' };
+            if (src.raw) opts.headers = { 'Accept': 'application/vnd.github.v3.raw' };
+            const sep = src.url.includes('?') ? '&' : '?';
+            const resp = await fetch(src.url + sep + '_t=' + Date.now(), opts);
+            if (!resp.ok) continue;
+            const cloudData = await resp.json();
             if (!cloudData || !cloudData.period) continue;
-            
-            // 云端数据比本地新才覆盖
             if (cloudData.period >= S.period) {
-                console.log('云端数据加载成功[' + src.name + ']:', cloudData.period, '期');
-                S.period = cloudData.period;
-                if (cloudData.sequences) S.sequences = cloudData.sequences;
-                if (cloudData.winning !== undefined) S.winning = cloudData.winning;
-                if (cloudData.history) S.history = cloudData.history;
-                if (cloudData.watermark) S.watermark = cloudData.watermark;
-                S.lastUpdate = cloudData.lastUpdate || Date.now();
-                saveDataLocal();
-                updatePeriod();
-                updatePreview();
-                renderHistoryList();
-                renderPosterHistory();
-                document.getElementById('winningInput').value = '';
-                const ind = document.getElementById('syncIndicator');
-                if (ind) ind.textContent = '已同步';
+                applyCloudData(cloudData, src.name);
                 return;
             }
         } catch (e) {
             console.warn('数据源[' + src.name + ']失败:', e.message);
         }
     }
-    const ind = document.getElementById('syncIndicator');
-    if (ind) ind.textContent = '本地';
+    // 全部失败，初始S对象数据仍然有效
+    console.log('所有云端源均失败，使用内置数据');
 }
 
 // 保存到localStorage
@@ -915,29 +896,28 @@ function loadFromLocal() {
     try { return JSON.parse(d); } catch(e) { return null; }
 }
 
+// 手动刷新数据
+async function refreshData() {
+    const ind = document.getElementById('syncIndicator');
+    if (ind) ind.textContent = '刷新中...';
+    await autoLoadFromCloud();
+}
+
 // saveData = 保存本地（由GitHub Actions管理云端数据）
 function saveData() {
     saveDataLocal();
 }
 // ========== 页面加载完成后初始化 ==========
 window.addEventListener('DOMContentLoaded', async () => {
-    // 先显示本地数据（快速响应），然后立即加载云端最新数据覆盖
-    const local = loadFromLocal();
-    if (local) {
-        if (local.period !== undefined) S.period = local.period;
-        if (local.sequences) S.sequences = local.sequences;
-        if (local.winning !== undefined) S.winning = local.winning;
-        if (local.history) S.history = local.history;
-        if (local.watermark) S.watermark = local.watermark;
-        if (local.lastUpdate) S.lastUpdate = local.lastUpdate;
-    }
+    // 初始S对象已包含最新数据（由workflow自动更新）
+    // 直接渲染初始状态
     updatePeriod();
     updatePreview();
     renderHistoryList();
     renderPosterHistory();
     document.getElementById('winningInput').value = '';
     
-    // 立即加载云端最新数据（双重源+强制无缓存），云端数据优先
+    // 从云端加载最新数据（GitHub API绕过CDN），成功则覆盖初始数据
     await autoLoadFromCloud();
     
     // 检查是否需要生成新期
