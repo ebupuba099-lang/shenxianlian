@@ -835,33 +835,47 @@ function updateWinningBtnText() {
 // ========== 数据同步（自动从同域文件加载）==========
 let pollTimer = null;
 
-// 自动从同域数据文件加载最新数据
+// 自动从云端加载最新数据（双重源+强制无缓存）
 async function autoLoadFromCloud() {
-    try {
-        const resp = await fetch('./data/sxl_data.json?' + Date.now());
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const cloudData = await resp.json();
-        if (!cloudData || !cloudData.period) return;
-        console.log('云端数据加载成功:', cloudData.period, '期');
-        S.period = cloudData.period;
-        if (cloudData.sequences) S.sequences = cloudData.sequences;
-        if (cloudData.winning !== undefined) S.winning = cloudData.winning;
-        if (cloudData.history) S.history = cloudData.history;
-        if (cloudData.watermark) S.watermark = cloudData.watermark;
-        S.lastUpdate = cloudData.lastUpdate || Date.now();
-        saveDataLocal(); 
-        updatePeriod(); 
-        updatePreview(); 
-        renderHistoryList(); 
-        renderPosterHistory();
-        document.getElementById('winningInput').value = '';  // 不自动填入开奖号，保持输入框空白
-        const ind = document.getElementById('syncIndicator');
-        if(ind) ind.textContent = '已同步';
-    } catch(e) {
-        console.warn('云端加载失败:', e);
-        const ind = document.getElementById('syncIndicator');
-        if(ind) ind.textContent = '本地';
+    // 数据源：同域文件优先，GitHub raw兜底
+    const DATA_SOURCES = [
+        { name: '同域', url: './data/sxl_data.json' },
+        { name: 'GitHub', url: 'https://raw.githubusercontent.com/ebupuba099-lang/shenxianlian/main/data/sxl_data.json' }
+    ];
+    
+    for (const src of DATA_SOURCES) {
+        try {
+            const resp = await fetch(src.url + '?_t=' + Date.now(), { cache: 'no-store' });
+            if (!resp.ok) continue;
+            const cloudData = await resp.json();
+            if (!cloudData || !cloudData.period) continue;
+            
+            // 云端数据比本地新才覆盖
+            if (cloudData.period >= S.period) {
+                console.log('云端数据加载成功[' + src.name + ']:', cloudData.period, '期');
+                S.period = cloudData.period;
+                if (cloudData.sequences) S.sequences = cloudData.sequences;
+                if (cloudData.winning !== undefined) S.winning = cloudData.winning;
+                if (cloudData.history) S.history = cloudData.history;
+                if (cloudData.watermark) S.watermark = cloudData.watermark;
+                S.lastUpdate = cloudData.lastUpdate || Date.now();
+                saveDataLocal();
+                updatePeriod();
+                updatePreview();
+                renderHistoryList();
+                renderPosterHistory();
+                document.getElementById('winningInput').value = '';
+                const ind = document.getElementById('syncIndicator');
+                if (ind) ind.textContent = '已同步';
+                return; // 成功即退出
+            }
+        } catch (e) {
+            console.warn('数据源[' + src.name + ']加载失败:', e.message);
+        }
     }
+    // 全部失败
+    const ind = document.getElementById('syncIndicator');
+    if (ind) ind.textContent = '本地';
 }
 
 // 保存到localStorage
@@ -888,7 +902,8 @@ function saveData() {
     saveDataLocal();
 }
 // ========== 页面加载完成后初始化 ==========
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+    // 先显示本地数据（快速响应），然后立即加载云端最新数据覆盖
     const local = loadFromLocal();
     if (local) {
         if (local.period !== undefined) S.period = local.period;
@@ -902,8 +917,12 @@ window.addEventListener('DOMContentLoaded', () => {
     updatePreview();
     renderHistoryList();
     renderPosterHistory();
-    document.getElementById('winningInput').value = '';  // 不自动填入开奖号，保持输入框空白
-    autoLoadFromCloud();
+    document.getElementById('winningInput').value = '';
+    
+    // 立即加载云端最新数据（双重源+强制无缓存），云端数据优先
+    await autoLoadFromCloud();
+    
+    // 检查是否需要生成新期
     const autoP = calcAutoPeriod();
     if (autoP > S.period) generateNewPeriod();
 });
