@@ -9,7 +9,8 @@ import json
 import random
 import os
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from urllib.request import Request, urlopen
 
 GH_TOKEN = os.environ.get('GH_TOKEN', os.environ.get('GIST_TOKEN', ''))
@@ -113,7 +114,7 @@ def main():
     
     data = load_data()
     
-    today = datetime.now()
+    today = datetime.now(ZoneInfo("Asia/Shanghai"))
     days_diff = (today - BASE_DATE).days
     today_period = 2026121 + days_diff
     
