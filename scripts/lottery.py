@@ -2,168 +2,138 @@
 # -*- coding: utf-8 -*-
 """
 神仙连 - 每日开奖号码自动填入脚本
-每天22:00执行：从体彩官方API获取开奖号码 → 填入当前期 → 推送Gist
-注意：不再计算hits，hits由用户手动管理或由generate.py在新期生成时管理
+直接用GitHub Contents API读写repo数据文件，含期号校验
 """
 
 import json
 import os
+import base64
 from datetime import datetime
 from urllib.request import Request, urlopen
 
-# ========== 配置 ==========
-GIST_TOKEN = os.environ.get('GIST_TOKEN', '')
-GIST_ID = 'ce3470b6f88383f2a26791eb2c55e2e4'
-GIST_FILENAME = 'sxl_data.json'
-GIST_API = f'https://api.github.com/gists/{GIST_ID}'
+GH_TOKEN = os.environ.get('GH_TOKEN', os.environ.get('GIST_TOKEN', ''))
+REPO = 'ebupuba099-lang/shenxianlian'
+DATA_FILE = 'data/sxl_data.json'
 
-# 体彩官方API - 排列五
 SPORTTERY_URL = 'https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry?gameNo=350133&provinceId=0&pageSize=1&is11=0'
-# 灰鸟API - 备用
 HUINIAO_URL = 'http://api.huiniao.top/interface/home/lotteryHistory?type=plw&page=1&limit=1'
 
 def log(msg):
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{now}] {msg}", flush=True)
 
-def fetch_gist():
-    headers = {'User-Agent': 'Python'}
-    if GIST_TOKEN:
-        headers['Authorization'] = f'token {GIST_TOKEN}'
-    req = Request(GIST_API, headers=headers)
+def load_data():
+    headers = {'Authorization': f'token {GH_TOKEN}', 'Accept': 'application/vnd.github.v3.raw'}
+    req = Request(f'https://api.github.com/repos/{REPO}/contents/{DATA_FILE}', headers=headers)
     resp = urlopen(req, timeout=30)
-    data = json.loads(resp.read().decode('utf-8'))
-    content = data['files'][GIST_FILENAME]['content']
-    return json.loads(content)
+    return json.loads(resp.read().decode('utf-8'))
 
-def push_gist(data):
-    body = json.dumps({
-        'files': {
-            GIST_FILENAME: {
-                'content': json.dumps(data, ensure_ascii=False, indent=2)
-            }
-        }
-    }).encode('utf-8')
+def save_data(data):
     headers = {
-        'Authorization': f'token {GIST_TOKEN}',
-        'Content-Type': 'application/json',
-        'User-Agent': 'Python'
+        'Authorization': f'token {GH_TOKEN}',
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
     }
-    req = Request(GIST_API, data=body, method='PATCH', headers=headers)
-    resp = urlopen(req, timeout=30)
+    sha_req = Request(f'https://api.github.com/repos/{REPO}/contents/{DATA_FILE}', headers=headers)
+    sha_resp = urlopen(sha_req, timeout=30)
+    sha = json.loads(sha_resp.read().decode('utf-8'))['sha']
+    content = json.dumps(data, ensure_ascii=False)
+    b64 = base64.b64encode(content.encode('utf-8')).decode()
+    body = json.dumps({'message': 'auto: update lottery result', 'content': b64, 'sha': sha}).encode('utf-8')
+    put_req = Request(f'https://api.github.com/repos/{REPO}/contents/{DATA_FILE}', data=body, method='PUT', headers=headers)
+    resp = urlopen(put_req, timeout=30)
     return resp.status == 200
 
-def fetch_lottery_number(retry=3):
-    apis = [
-        {
-            'name': '体彩官方',
-            'url': SPORTTERY_URL,
-            'parse': lambda data: (
-                data['value']['lastPoolDraw']['lotteryDrawNum'],
-                data['value']['lastPoolDraw']['lotteryDrawResult']
-            ) if data.get('value', {}).get('lastPoolDraw') else None
-        },
-        {
-            'name': '灰鸟API',
-            'url': HUINIAO_URL,
-            'parse': lambda data: (
-                data['data']['last']['code'],
-                ' '.join([data['data']['last']['one'], data['data']['last']['two'],
-                          data['data']['last']['three'], data['data']['last']['four'],
-                          data['data']['last']['five']])
-            ) if data.get('data', {}).get('last') else None
-        }
-    ]
-
-    for api in apis:
-        for attempt in range(retry):
-            try:
-                req = Request(api['url'], headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                    'Referer': 'https://www.lottery.gov.cn/'
-                })
-                resp = urlopen(req, timeout=15)
-                data = json.loads(resp.read().decode('utf-8'))
-                result = api['parse'](data)
-                if not result:
-                    log(f"{api['name']}: 解析返回数据失败")
-                    continue
-                draw_num, draw_result = result
-                nums = draw_result.replace(',', ' ').split()
-                if len(nums) != 5:
-                    log(f"{api['name']}: 号码格式异常 '{draw_result}'，期望5位")
-                    continue
-                full_number = ''.join(nums)
-                if not full_number.isdigit():
-                    log(f"{api['name']}: 号码包含非数字: {full_number}")
-                    continue
-                log(f"{api['name']}获取成功: 期号{draw_num}, 号码{draw_result}")
-                return (draw_num, full_number)
-            except Exception as e:
-                log(f"{api['name']}失败 (第{attempt+1}次): {e}")
-                if attempt < retry - 1:
-                    import time; time.sleep(5)
-    return None
+def fetch_winning_number():
+    """获取最新开奖号码，返回 (4位数字, API期号) 或 (None, None)"""
+    try:
+        req = Request(SPORTTERY_URL, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://www.lottery.gov.cn/',
+            'Accept': 'application/json'
+        })
+        resp = urlopen(req, timeout=15)
+        data = json.loads(resp.read().decode('utf-8'))
+        if data.get('value') and data['value'].get('list'):
+            latest = data['value']['list'][0]
+            result = latest.get('lotteryDrawResult', '')
+            draw_num = latest.get('lotteryDrawNum', '')
+            if result:
+                digits = result.replace(' ', '')
+                if len(digits) >= 4:
+                    winning4 = digits[:4]
+                    period = int('20' + draw_num) if draw_num else None
+                    log(f"体彩官方: 期号={draw_num}(→{period}), 号码={result}")
+                    return winning4, period
+    except Exception as e:
+        log(f"体彩官方失败: {e}")
+    
+    try:
+        req = Request(HUINIAO_URL, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        resp = urlopen(req, timeout=15)
+        data = json.loads(resp.read().decode('utf-8'))
+        d = data.get('data', {})
+        last = None
+        if isinstance(d, dict):
+            last = d.get('last')
+            if not last and d.get('data', {}).get('list'):
+                last = d['data']['list'][0]
+        elif isinstance(d, list) and len(d) > 0:
+            last = d[0]
+        if last:
+            code = last.get('code', '')
+            one, two, three, four = last.get('one',''), last.get('two',''), last.get('three',''), last.get('four','')
+            winning4 = f"{one}{two}{three}{four}"
+            period = int('20' + code) if code else None
+            if len(winning4) == 4 and winning4.isdigit():
+                log(f"灰鸟API: 期号={code}(→{period}), 号码={one}{two}{three}{four}{last.get('five','')}")
+                return winning4, period
+    except Exception as e:
+        log(f"灰鸟API失败: {e}")
+    
+    return None, None
 
 def main():
     log("=" * 50)
     log("神仙连开奖号码自动填入任务开始")
-
-    # 1. 获取开奖号码
-    result = fetch_lottery_number(retry=3)
-    if not result:
-        log("获取开奖号码失败，任务终止")
-        return False
-
-    draw_num, lottery_number = result
-    winning4 = lottery_number[:4]
-
-    if len(winning4) != 4 or not winning4.isdigit():
-        log(f"开奖号码格式异常: {lottery_number}，取前4位: {winning4}，任务终止")
-        return False
-
-    target_period = '20' + draw_num
-    log(f"开奖期号: {draw_num}, 对应期数: {target_period}, 号码: {lottery_number}, 前4位: {winning4}")
-
-    # 2. 从Gist读取当前数据
-    for attempt in range(3):
-        try:
-            cloud_data = fetch_gist()
-            break
-        except Exception as e:
-            log(f"读取Gist失败 (第{attempt+1}次): {e}")
-            if attempt == 2:
-                log("读取Gist彻底失败，任务终止")
-                return False
-            import time; time.sleep(5)
-
-    current_period = cloud_data.get('period', 0)
-    history = cloud_data.get('history', [])
-
-    log(f"当前期数: {current_period}, 当前开奖号: {cloud_data.get('winning') or '(空)'}")
-
-    # 3. 只更新winning字段，不计算hits（hits由用户手动管理）
-    cloud_data['winning'] = winning4
+    
+    winning4, api_period = fetch_winning_number()
+    if not winning4:
+        log("所有API均未获取到开奖号码，跳过")
+        return True
+    
+    data = load_data()
+    current_period = data.get('period', 0)
+    current_winning = data.get('winning', '')
+    
+    log(f"当前期数: {current_period}, 当前开奖号: {'(空)' if not current_winning else current_winning}")
+    log(f"API期号: {api_period}, 开奖号: {winning4}")
+    
+    # 校验：API返回的期号必须与当前期匹配，且当前期无开奖号
+    if current_winning:
+        log(f"当前期已有开奖号 {current_winning}，跳过")
+        return True
+    
+    if api_period and current_period != api_period:
+        log(f"期号不匹配: 当前={current_period}, API={api_period}，跳过")
+        return True
+    
+    data['winning'] = winning4
     log(f"填入开奖号 {winning4}")
-
-    cloud_data['lastUpdate'] = int(datetime.now().timestamp() * 1000)
-
-    # 4. 推送到Gist
-    for attempt in range(3):
-        try:
-            success = push_gist(cloud_data)
-            if success:
-                log(f"推送成功！期{current_period} 开奖{winning4} 已更新")
-                return True
-            else:
-                log(f"推送失败 (第{attempt+1}次)")
-        except Exception as e:
-            log(f"推送异常 (第{attempt+1}次): {e}")
-        if attempt < 2:
-            import time; time.sleep(5)
-
-    log("推送彻底失败")
-    return False
+    
+    try:
+        success = save_data(data)
+        if success:
+            log(f"推送成功！期{current_period} 开奖{winning4} 已更新")
+        else:
+            log("推送失败")
+    except Exception as e:
+        log(f"推送异常: {e}")
+    
+    log("任务完成")
+    return True
 
 if __name__ == '__main__':
     import sys
