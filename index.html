@@ -838,20 +838,35 @@ function updateWinningBtnText() {
 // ========== 数据同步（自动从同域文件加载）==========
 let pollTimer = null;
 
-// 自动从云端加载最新数据（双重源+强制无缓存）
+// 自动从云端加载最新数据（GitHub API直读，绕过CDN缓存）
+const GH_API_REPO = 'ebupuba099-lang/shenxianlian';
+const GH_API_PATH = 'data/sxl_data.json';
+
 async function autoLoadFromCloud() {
-    // 数据源：同域文件优先，GitHub raw兜底
+    // 数据源：GitHub API直读（绕过CDN）→ jsDelivr CDN → 同域文件
     const DATA_SOURCES = [
-        { name: '同域', url: './data/sxl_data.json' },
-        { name: 'jsDelivr', url: 'https://cdn.jsdelivr.net/gh/ebupuba099-lang/shenxianlian@main/data/sxl_data.json' },
-        { name: 'GitHub', url: 'https://raw.githubusercontent.com/ebupuba099-lang/shenxianlian/main/data/sxl_data.json' }
+        { name: 'GitHub API', fetch: async () => {
+            const resp = await fetch('https://api.github.com/repos/' + GH_API_REPO + '/contents/' + GH_API_PATH, {
+                headers: { 'Accept': 'application/vnd.github.v3.raw' }
+            });
+            if (!resp.ok) throw new Error('API ' + resp.status);
+            return await resp.json();
+        }},
+        { name: 'jsDelivr', fetch: async () => {
+            const resp = await fetch('https://cdn.jsdelivr.net/gh/' + GH_API_REPO + '@main/' + GH_API_PATH + '?_t=' + Date.now(), { cache: 'no-store' });
+            if (!resp.ok) throw new Error('jsDelivr ' + resp.status);
+            return await resp.json();
+        }},
+        { name: '同域', fetch: async () => {
+            const resp = await fetch('./' + GH_API_PATH + '?_t=' + Date.now(), { cache: 'no-store' });
+            if (!resp.ok) throw new Error('同域 ' + resp.status);
+            return await resp.json();
+        }}
     ];
     
     for (const src of DATA_SOURCES) {
         try {
-            const resp = await fetch(src.url + '?_t=' + Date.now(), { cache: 'no-store' });
-            if (!resp.ok) continue;
-            const cloudData = await resp.json();
+            const cloudData = await src.fetch();
             if (!cloudData || !cloudData.period) continue;
             
             // 云端数据比本地新才覆盖
@@ -871,13 +886,12 @@ async function autoLoadFromCloud() {
                 document.getElementById('winningInput').value = '';
                 const ind = document.getElementById('syncIndicator');
                 if (ind) ind.textContent = '已同步';
-                return; // 成功即退出
+                return;
             }
         } catch (e) {
-            console.warn('数据源[' + src.name + ']加载失败:', e.message);
+            console.warn('数据源[' + src.name + ']失败:', e.message);
         }
     }
-    // 全部失败
     const ind = document.getElementById('syncIndicator');
     if (ind) ind.textContent = '本地';
 }
