@@ -22,6 +22,57 @@ def log(msg):
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{now}] {msg}", flush=True)
 
+
+def update_index_html(data):
+    """更新index.html里的初始S对象，确保页面打开就能显示最新数据"""
+    import re
+    try:
+        headers2 = {
+            'Authorization': f'token {GH_TOKEN}',
+            'Accept': 'application/vnd.github.v3+json'
+        }
+        sha_req = Request(f'https://api.github.com/repos/{REPO}/contents/index.html', headers=headers2)
+        sha_resp = urlopen(sha_req, timeout=30)
+        sha_data = json.loads(sha_resp.read().decode('utf-8'))
+        html_sha = sha_data['sha']
+        html_content = base64.b64decode(sha_data['content']).decode('utf-8')
+        
+        s_obj = {
+            'period': data.get('period', 0),
+            'winning': data.get('winning', ''),
+            'sequences': data.get('sequences', {}),
+            'history': data.get('history', [])[:7]
+        }
+        s_json = json.dumps(s_obj, ensure_ascii=False, separators=(',', ':'))
+        new_s = 'let S = ' + s_json + ';'
+        
+        new_html = re.sub(r'let S = \{[^;]*\};', new_s, html_content, count=1)
+        
+        if new_html == html_content:
+            log("index.html无需更新")
+            return True
+        
+        encoded = base64.b64encode(new_html.encode('utf-8')).decode('utf-8')
+        body = json.dumps({
+            'message': 'auto: update initial S data in index.html',
+            'content': encoded,
+            'sha': html_sha
+        }).encode('utf-8')
+        put_req = Request(
+            f'https://api.github.com/repos/{REPO}/contents/index.html',
+            data=body, method='PUT', headers=headers2
+        )
+        resp2 = urlopen(put_req, timeout=30)
+        if resp2.status == 200:
+            log("index.html初始数据已更新")
+            return True
+        else:
+            log(f"index.html更新失败: HTTP {resp2.status}")
+            return False
+    except Exception as e:
+        log(f"更新index.html异常: {e}")
+        return False
+
 def load_data():
     headers = {'Authorization': f'token {GH_TOKEN}', 'Accept': 'application/vnd.github.v3.raw'}
     req = Request(f'https://api.github.com/repos/{REPO}/contents/{DATA_FILE}', headers=headers)
@@ -127,6 +178,7 @@ def main():
         success = save_data(data)
         if success:
             log(f"推送成功！期{current_period} 开奖{winning4} 已更新")
+            update_index_html(data)
         else:
             log("推送失败")
     except Exception as e:
