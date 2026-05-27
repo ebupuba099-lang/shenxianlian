@@ -17,5 +17,6 @@ jobs:
           python-version: '3.11'
       - name: 执行生成脚本
         env:
+          TZ: Asia/Shanghai
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: python scripts/generate.py
