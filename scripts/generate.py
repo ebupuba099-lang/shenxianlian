@@ -73,7 +73,7 @@ def update_index_html(data):
             log("无法匹配 S 对象的平衡花括号")
             return False
         
-        old_s = target + matched  # FIX: include the prefix
+        old_s = matched
         new_html = html_content.replace(old_s, new_s, 1)
         
         if new_html == html_content:
@@ -126,7 +126,7 @@ def save_data(data):
 def generate_decreasing_sequence():
     digits = list(range(10))
     random.shuffle(digits)
-    selected = digits[:8]  # 8 digits instead of 9
+    selected = digits[:9]
     sequences = [''.join(str(d) for d in selected)]
     current = list(selected)
     while len(current) > 1:
