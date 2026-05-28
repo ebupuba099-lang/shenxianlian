@@ -42,7 +42,7 @@ def update_index_html(data):
             'period': data.get('period', 0),
             'winning': data.get('winning', ''),
             'sequences': data.get('sequences', {}),
-            'history': data.get('history', [])[:7]
+            'history': data.get('history', [])
         }
         s_json = json.dumps(s_obj, ensure_ascii=False, separators=(',', ':'))
         new_s = 'let S = ' + s_json + ';'
