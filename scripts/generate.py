@@ -145,7 +145,7 @@ def main():
                 'hits': data.get('hits', {})
             }
             history.insert(0, hist_entry)
-            if len(history) > 10:
+            if len(history) > 7:
                 history = history[:10]
             data['history'] = history
     
