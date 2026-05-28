@@ -10,6 +10,7 @@ import random
 import os
 import base64
 from datetime import datetime
+import time
 import os
 from urllib.request import Request, urlopen
 
@@ -25,7 +26,7 @@ def log(msg):
 
 
 def update_index_html(data):
-    """更新index.html里的初始S对象，确保页面打开就能显示最新数据"""
+    """更新index.html里的embedded-data script标签，确保页面打开就能显示最新数据"""
     import re
     try:
         headers2 = {
@@ -36,26 +37,44 @@ def update_index_html(data):
         sha_resp = urlopen(sha_req, timeout=30)
         sha_data = json.loads(sha_resp.read().decode('utf-8'))
         html_sha = sha_data['sha']
-        html_content = base64.b64decode(sha_data['content']).decode('utf-8')
+        html_content = sha_data['content'].decode('utf-8') if isinstance(sha_data['content'], bytes) else sha_data['content']
         
-        s_obj = {
+        # 构建完整数据
+        full_data = {
             'period': data.get('period', 0),
             'winning': data.get('winning', ''),
             'sequences': data.get('sequences', {}),
-            'history': data.get('history', [])
+            'history': data.get('history', []),
+            'hits': data.get('hits', {}),
+            'lastUpdate': data.get('lastUpdate', int(time.time() * 1000))
         }
-        s_json = json.dumps(s_obj, ensure_ascii=False, separators=(',', ':'))
-        new_s = 'let S = ' + s_json + ';'
+        data_json = json.dumps(full_data, ensure_ascii=False, separators=(',', ':'))
         
-        new_html = re.sub(r'let S = \{[^;]*\};', new_s, html_content, count=1)
+        # 替换 embedded-data script 内容
+        new_html = re.sub(
+            r'(<script id="embedded-data"[^>]*>)(.*?)(</script>)',
+            r'\g<1>' + data_json + r'\g<3>',
+            html_content,
+            count=1,
+            flags=re.DOTALL
+        )
         
         if new_html == html_content:
-            log("index.html无需更新")
+            # 尝试另一种方式：直接替换 let S = {...};
+            # 匹配 "let S = " 后面一直到 "}; --> 的内容
+            pattern = r'(let S = \(function\(\) \{[^}]+return )(\{[^}]+\})(\};?\s*\}\)\(\);)'
+            match = re.search(r'let S = \(function\(\) \{[^}]+return (\{.*\});?\s*\}\)\(\);', html_content, re.DOTALL)
+            if match:
+                new_s = r'let S = (function() { var el = document.getElementById("embedded-data"); if (el) { try { return JSON.parse(el.textContent); } catch(e) {} } return ' + data_json + r'; })();'
+                new_html = re.sub(r'let S = \(function\(\) \{[^}]+return \{[^}]+\};?\s*\}\)\(\);', new_s, html_content, count=1, flags=re.DOTALL)
+            
+        if new_html == html_content:
+            log("index.html无需更新（无变化）")
             return True
         
         encoded = base64.b64encode(new_html.encode('utf-8')).decode('utf-8')
         body = json.dumps({
-            'message': 'auto: update initial S data in index.html',
+            'message': 'auto: update embedded data in index.html',
             'content': encoded,
             'sha': html_sha
         }).encode('utf-8')
@@ -65,7 +84,7 @@ def update_index_html(data):
         )
         resp2 = urlopen(put_req, timeout=30)
         if resp2.status == 200:
-            log("index.html初始数据已更新")
+            log("index.html内嵌数据已更新")
             return True
         else:
             log(f"index.html更新失败: HTTP {resp2.status}")
@@ -163,6 +182,7 @@ def main():
     try:
         success = save_data(data)
         if success:
+            data['lastUpdate'] = int(time.time() * 1000)
             log(f"推送成功！新期: {auto_period}")
             update_index_html(data)
         else:
