@@ -850,11 +850,24 @@ async function autoLoadFromCloud() {
         if (cloudData.hits) S.hits = cloudData.hits;
         if (cloudData.watermark) S.watermark = cloudData.watermark;
         S.lastUpdate = cloudData.lastUpdate || Date.now();
-        saveDataLocal(); 
-        updatePeriod(); 
-        updatePreview(); 
-        renderHistoryList(); 
-        renderPosterHistory();
+        if (cloudData.history && cloudData.history.length > 0) {
+            saveDataLocal(); 
+            updatePeriod(); 
+            updatePreview(); 
+            renderHistoryList(); 
+            renderPosterHistory();
+        } else if (!S.history || S.history.length === 0) {
+            // 云端历史为空且本地也为空，使用内嵌历史（防止显示暂无数据）
+            S.history = [{"period":2026137,"winning":"5443","hits":{"千":7,"百":2,"十":3,"个":0}},{"period":2026136,"winning":"4662","hits":{"千":7,"百":3,"十":2,"个":3}},{"period":2026135,"winning":"9392","hits":{"千":6,"百":3,"十":6,"个":6}},{"period":2026134,"winning":"5153","hits":{"千":4,"百":4,"十":0,"个":6}},{"period":2026133,"winning":"5437","hits":{"千":0,"百":5,"十":8,"个":2}},{"period":2026132,"winning":"4435","hits":{"千":5,"百":2,"十":8,"个":0}},{"period":2026131,"winning":"9684","hits":{"千":7,"百":6,"十":7,"个":6}}];
+            saveDataLocal();
+            renderHistoryList();
+            renderPosterHistory();
+        } else {
+            // 云端无history更新但本地已有，保存并渲染
+            saveDataLocal();
+            renderHistoryList();
+            renderPosterHistory();
+        }
         document.getElementById('winningInput').value = '';  // 不自动填入开奖号，保持输入框空白
         const ind = document.getElementById('syncIndicator');
         if(ind) ind.textContent = '已同步';
