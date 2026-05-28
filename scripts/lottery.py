@@ -1,1 +1,218 @@
-{"name":"lottery.py","path":"scripts/lottery.py","sha":"f3932334d516194b569e12ae127e864fdd61f10c","size":8355,"url":"https://api.github.com/repos/ebupuba099-lang/shenxianlian/contents/scripts/lottery.py?ref=main","html_url":"https://github.com/ebupuba099-lang/shenxianlian/blob/main/scripts/lottery.py","git_url":"https://api.github.com/repos/ebupuba099-lang/shenxianlian/git/blobs/f3932334d516194b569e12ae127e864fdd61f10c","download_url":"https://raw.githubusercontent.com/ebupuba099-lang/shenxianlian/main/scripts/lottery.py","type":"file","content":"IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwojIC0qLSBjb2Rpbmc6IHV0Zi04IC0q\nLQoiIiIK56We5LuZ6L+eIC0g5q+P5pel5byA5aWW5Y+356CB6Ieq5Yqo5aGr\n5YWl6ISa5pysCuebtOaOpeeUqEdpdEh1YiBDb250ZW50cyBBUEnor7vlhply\nZXBv5pWw5o2u5paH5Lu277yM5ZCr5pyf5Y+35qCh6aqMCiIiIgoKaW1wb3J0\nIGpzb24KaW1wb3J0IG9zCmltcG9ydCBiYXNlNjQKZnJvbSBkYXRldGltZSBp\nbXBvcnQgZGF0ZXRpbWUKZnJvbSB1cmxsaWIucmVxdWVzdCBpbXBvcnQgUmVx\ndWVzdCwgdXJsb3BlbgoKR0hfVE9LRU4gPSBvcy5lbnZpcm9uLmdldCgnR0hf\nVE9LRU4nLCBvcy5lbnZpcm9uLmdldCgnR0lTVF9UT0tFTicsICcnKSkKUkVQ\nTyA9ICdlYnVwdWJhMDk5LWxhbmcvc2hlbnhpYW5saWFuJwpEQVRBX0ZJTEUg\nPSAnZGF0YS9zeGxfZGF0YS5qc29uJwoKU1BPUlRURVJZX1VSTCA9ICdodHRw\nczovL3dlYmFwaS5zcG9ydHRlcnkuY24vZ2F0ZXdheS9sb3R0ZXJ5L2dldEhp\nc3RvcnlQYWdlTGlzdFYxLnFyeT9nYW1lTm89MzUwMTMzJnByb3ZpbmNlSWQ9\nMCZwYWdlU2l6ZT0xJmlzMTE9MCcKSFVJTklBT19VUkwgPSAnaHR0cDovL2Fw\naS5odWluaWFvLnRvcC9pbnRlcmZhY2UvaG9tZS9sb3R0ZXJ5SGlzdG9yeT90\neXBlPXBsdyZwYWdlPTEmbGltaXQ9MScKCmRlZiBsb2cobXNnKToKICAgIG5v\ndyA9IGRhdGV0aW1lLm5vdygpLnN0cmZ0aW1lKCclWS0lbS0lZCAlSDolTTol\nUycpCiAgICBwcmludChmIlt7bm93fV0ge21zZ30iLCBmbHVzaD1UcnVlKQoK\nCmRlZiBtYXRjaF9iYWxhbmNlZF9icmFjZXModGV4dCwgc3RhcnQpOgogICAg\nIiIi5LuOc3RhcnTkvY3nva7lvIDlp4vvvIzljLnphY3lubPooaHnmoToirHm\ni6zlj7fvvIzov5Tlm57ljLnphY3nmoTlrZfnrKbkuLIiIiIKICAgIGNvdW50\nID0gMAogICAgZm9yIGkgaW4gcmFuZ2Uoc3RhcnQsIGxlbih0ZXh0KSk6CiAg\nICAgICAgaWYgdGV4dFtpXSA9PSAneyc6CiAgICAgICAgICAgIGNvdW50ICs9\nIDEKICAgICAgICBlbGlmIHRleHRbaV0gPT0gJ30nOgogICAgICAgICAgICBj\nb3VudCAtPSAxCiAgICAgICAgICAgIGlmIGNvdW50ID09IDA6CiAgICAgICAg\nICAgICAgICByZXR1cm4gdGV4dFtzdGFydDppKzFdCiAgICByZXR1cm4gTm9u\nZQoKZGVmIHVwZGF0ZV9pbmRleF9odG1sKGRhdGEpOgogICAgIiIi5pu05paw\naW5kZXguaHRtbOmHjOeahOWIneWni1Plr7nosaHvvIznoa7kv53pobXpnaLm\niZPlvIDlsLHog73mmL7npLrmnIDmlrDmlbDmja4iIiIKICAgIGltcG9ydCBy\nZQogICAgdHJ5OgogICAgICAgIGhlYWRlcnMyID0gewogICAgICAgICAgICAn\nQXV0aG9yaXphdGlvbic6IGYndG9rZW4ge0dIX1RPS0VOfScsCiAgICAgICAg\nICAgICdBY2NlcHQnOiAnYXBwbGljYXRpb24vdm5kLmdpdGh1Yi52Mytqc29u\nJwogICAgICAgIH0KICAgICAgICBzaGFfcmVxID0gUmVxdWVzdChmJ2h0dHBz\nOi8vYXBpLmdpdGh1Yi5jb20vcmVwb3Mve1JFUE99L2NvbnRlbnRzL2luZGV4\nLmh0bWwnLCBoZWFkZXJzPWhlYWRlcnMyKQogICAgICAgIHNoYV9yZXNwID0g\ndXJsb3BlbihzaGFfcmVxLCB0aW1lb3V0PTMwKQogICAgICAgIHNoYV9kYXRh\nID0ganNvbi5sb2FkcyhzaGFfcmVzcC5yZWFkKCkuZGVjb2RlKCd1dGYtOCcp\nKQogICAgICAgIGh0bWxfc2hhID0gc2hhX2RhdGFbJ3NoYSddCiAgICAgICAg\naHRtbF9jb250ZW50ID0gYmFzZTY0LmI2NGRlY29kZShzaGFfZGF0YVsnY29u\ndGVudCddKS5kZWNvZGUoJ3V0Zi04JykKICAgICAgICAKICAgICAgICBzX29i\naiA9IHsKICAgICAgICAgICAgJ3BlcmlvZCc6IGRhdGEuZ2V0KCdwZXJpb2Qn\nLCAwKSwKICAgICAgICAgICAgJ3dpbm5pbmcnOiBkYXRhLmdldCgnd2lubmlu\nZycsICcnKSwKICAgICAgICAgICAgJ3NlcXVlbmNlcyc6IGRhdGEuZ2V0KCdz\nZXF1ZW5jZXMnLCB7fSksCiAgICAgICAgICAgICdoaXN0b3J5JzogZGF0YS5n\nZXQoJ2hpc3RvcnknLCBbXSkKICAgICAgICB9CiAgICAgICAgc19qc29uID0g\nanNvbi5kdW1wcyhzX29iaiwgZW5zdXJlX2FzY2lpPUZhbHNlLCBzZXBhcmF0\nb3JzPSgnLCcsICc6JykpCiAgICAgICAgbmV3X3MgPSAnbGV0IFMgPSAnICsg\nc19qc29uICsgJzsnCiAgICAgICAgCiAgICAgICAgIyDmib7liLAgJ2xldCBT\nID0gJyDnmoTkvY3nva7vvIznlKjlubPooaHoirHmi6zlj7fljLnphY3lrozm\nlbTnmoQgUyDlr7nosaEKICAgICAgICB0YXJnZXQgPSAnbGV0IFMgPSAnCiAg\nICAgICAgaWR4ID0gaHRtbF9jb250ZW50LmZpbmQodGFyZ2V0KQogICAgICAg\nIGlmIGlkeCA8IDA6CiAgICAgICAgICAgIGxvZygi5pyq5om+5YiwICdsZXQg\nUyA9ICfvvIzml6Dms5Xmm7TmlrAiKQogICAgICAgICAgICByZXR1cm4gRmFs\nc2UKICAgICAgICAKICAgICAgICAjIOi3s+i/hyAnbGV0IFMgPSAn77yM5LuO\nICd7JyDlvIDlp4vljLnphY0KICAgICAgICBicmFjZV9zdGFydCA9IGlkeCAr\nIGxlbih0YXJnZXQpCiAgICAgICAgbWF0Y2hlZCA9IG1hdGNoX2JhbGFuY2Vk\nX2JyYWNlcyhodG1sX2NvbnRlbnQsIGJyYWNlX3N0YXJ0KQogICAgICAgIGlm\nIG5vdCBtYXRjaGVkOgogICAgICAgICAgICBsb2coIuaXoOazleWMuemFjSBT\nIOWvueixoeeahOW5s+ihoeiKseaLrOWPtyIpCiAgICAgICAgICAgIHJldHVy\nbiBGYWxzZQogICAgICAgIAogICAgICAgIG9sZF9zID0gbWF0Y2hlZAogICAg\nICAgIG5ld19odG1sID0gaHRtbF9jb250ZW50LnJlcGxhY2Uob2xkX3MsIG5l\nd19zLCAxKQogICAgICAgIAogICAgICAgIGlmIG5ld19odG1sID09IGh0bWxf\nY29udGVudDoKICAgICAgICAgICAgbG9nKCJpbmRleC5odG1s5peg6ZyA5pu0\n5pawIikKICAgICAgICAgICAgcmV0dXJuIFRydWUKICAgICAgICAKICAgICAg\nICBlbmNvZGVkID0gYmFzZTY0LmI2NGVuY29kZShuZXdfaHRtbC5lbmNvZGUo\nJ3V0Zi04JykpLmRlY29kZSgndXRmLTgnKQogICAgICAgIGJvZHkgPSBqc29u\nLmR1bXBzKHsKICAgICAgICAgICAgJ21lc3NhZ2UnOiAnYXV0bzogdXBkYXRl\nIGluaXRpYWwgUyBkYXRhIGluIGluZGV4Lmh0bWwnLAogICAgICAgICAgICAn\nY29udGVudCc6IGVuY29kZWQsCiAgICAgICAgICAgICdzaGEnOiBodG1sX3No\nYQogICAgICAgIH0pLmVuY29kZSgndXRmLTgnKQogICAgICAgIHB1dF9yZXEg\nPSBSZXF1ZXN0KAogICAgICAgICAgICBmJ2h0dHBzOi8vYXBpLmdpdGh1Yi5j\nb20vcmVwb3Mve1JFUE99L2NvbnRlbnRzL2luZGV4Lmh0bWwnLAogICAgICAg\nICAgICBkYXRhPWJvZHksIG1ldGhvZD0nUFVUJywgaGVhZGVycz1oZWFkZXJz\nMgogICAgICAgICkKICAgICAgICByZXNwMiA9IHVybG9wZW4ocHV0X3JlcSwg\ndGltZW91dD0zMCkKICAgICAgICBpZiByZXNwMi5zdGF0dXMgPT0gMjAwOgog\nICAgICAgICAgICBsb2coImluZGV4Lmh0bWzliJ3lp4vmlbDmja7lt7Lmm7Tm\nlrAiKQogICAgICAgICAgICByZXR1cm4gVHJ1ZQogICAgICAgIGVsc2U6CiAg\nICAgICAgICAgIGxvZyhmImluZGV4Lmh0bWzmm7TmlrDlpLHotKU6IEhUVFAg\ne3Jlc3AyLnN0YXR1c30iKQogICAgICAgICAgICByZXR1cm4gRmFsc2UKICAg\nIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICBsb2coZiLmm7TmlrBp\nbmRleC5odG1s5byC5bi4OiB7ZX0iKQogICAgICAgIHJldHVybiBGYWxzZQoK\nZGVmIGxvYWRfZGF0YSgpOgogICAgaGVhZGVycyA9IHsnQXV0aG9yaXphdGlv\nbic6IGYndG9rZW4ge0dIX1RPS0VOfScsICdBY2NlcHQnOiAnYXBwbGljYXRp\nb24vdm5kLmdpdGh1Yi52My5yYXcnfQogICAgcmVxID0gUmVxdWVzdChmJ2h0\ndHBzOi8vYXBpLmdpdGh1Yi5jb20vcmVwb3Mve1JFUE99L2NvbnRlbnRzL3tE\nQVRBX0ZJTEV9JywgaGVhZGVycz1oZWFkZXJzKQogICAgcmVzcCA9IHVybG9w\nZW4ocmVxLCB0aW1lb3V0PTMwKQogICAgcmV0dXJuIGpzb24ubG9hZHMocmVz\ncC5yZWFkKCkuZGVjb2RlKCd1dGYtOCcpKQoKZGVmIHNhdmVfZGF0YShkYXRh\nKToKICAgIGhlYWRlcnMgPSB7CiAgICAgICAgJ0F1dGhvcml6YXRpb24nOiBm\nJ3Rva2VuIHtHSF9UT0tFTn0nLAogICAgICAgICdBY2NlcHQnOiAnYXBwbGlj\nYXRpb24vdm5kLmdpdGh1Yi52Mytqc29uJywKICAgICAgICAnQ29udGVudC1U\neXBlJzogJ2FwcGxpY2F0aW9uL2pzb24nCiAgICB9CiAgICBzaGFfcmVxID0g\nUmVxdWVzdChmJ2h0dHBzOi8vYXBpLmdpdGh1Yi5jb20vcmVwb3Mve1JFUE99\nL2NvbnRlbnRzL3tEQVRBX0ZJTEV9JywgaGVhZGVycz1oZWFkZXJzKQogICAg\nc2hhX3Jlc3AgPSB1cmxvcGVuKHNoYV9yZXEsIHRpbWVvdXQ9MzApCiAgICBz\naGEgPSBqc29uLmxvYWRzKHNoYV9yZXNwLnJlYWQoKS5kZWNvZGUoJ3V0Zi04\nJykpWydzaGEnXQogICAgY29udGVudCA9IGpzb24uZHVtcHMoZGF0YSwgZW5z\ndXJlX2FzY2lpPUZhbHNlKQogICAgYjY0ID0gYmFzZTY0LmI2NGVuY29kZShj\nb250ZW50LmVuY29kZSgndXRmLTgnKSkuZGVjb2RlKCkKICAgIGJvZHkgPSBq\nc29uLmR1bXBzKHsnbWVzc2FnZSc6ICdhdXRvOiB1cGRhdGUgbG90dGVyeSBy\nZXN1bHQnLCAnY29udGVudCc6IGI2NCwgJ3NoYSc6IHNoYX0pLmVuY29kZSgn\ndXRmLTgnKQogICAgcHV0X3JlcSA9IFJlcXVlc3QoZidodHRwczovL2FwaS5n\naXRodWIuY29tL3JlcG9zL3tSRVBPfS9jb250ZW50cy97REFUQV9GSUxFfScs\nIGRhdGE9Ym9keSwgbWV0aG9kPSdQVVQnLCBoZWFkZXJzPWhlYWRlcnMpCiAg\nICByZXNwID0gdXJsb3BlbihwdXRfcmVxLCB0aW1lb3V0PTMwKQogICAgcmV0\ndXJuIHJlc3Auc3RhdHVzID09IDIwMAoKZGVmIGZldGNoX3dpbm5pbmdfbnVt\nYmVyKCk6CiAgICAiIiLojrflj5bmnIDmlrDlvIDlpZblj7fnoIHvvIzov5Tl\nm54gKDTkvY3mlbDlrZcsIEFQSeacn+WPtykg5oiWIChOb25lLCBOb25lKSIi\nIgogICAgdHJ5OgogICAgICAgIHJlcSA9IFJlcXVlc3QoU1BPUlRURVJZX1VS\nTCwgaGVhZGVycz17CiAgICAgICAgICAgICdVc2VyLUFnZW50JzogJ01vemls\nbGEvNS4wIChXaW5kb3dzIE5UIDEwLjA7IFdpbjY0OyB4NjQpIEFwcGxlV2Vi\nS2l0LzUzNy4zNicsCiAgICAgICAgICAgICdSZWZlcmVyJzogJ2h0dHBzOi8v\nd3d3LmxvdHRlcnkuZ292LmNuLycsCiAgICAgICAgICAgICdBY2NlcHQnOiAn\nYXBwbGljYXRpb24vanNvbicKICAgICAgICB9KQogICAgICAgIHJlc3AgPSB1\ncmxvcGVuKHJlcSwgdGltZW91dD0xNSkKICAgICAgICBkYXRhID0ganNvbi5s\nb2FkcyhyZXNwLnJlYWQoKS5kZWNvZGUoJ3V0Zi04JykpCiAgICAgICAgaWYg\nZGF0YS5nZXQoJ3ZhbHVlJykgYW5kIGRhdGFbJ3ZhbHVlJ10uZ2V0KCdsaXN0\nJyk6CiAgICAgICAgICAgIGxhdGVzdCA9IGRhdGFbJ3ZhbHVlJ11bJ2xpc3Qn\nXVswXQogICAgICAgICAgICByZXN1bHQgPSBsYXRlc3QuZ2V0KCdsb3R0ZXJ5\nRHJhd1Jlc3VsdCcsICcnKQogICAgICAgICAgICBkcmF3X251bSA9IGxhdGVz\ndC5nZXQoJ2xvdHRlcnlEcmF3TnVtJywgJycpCiAgICAgICAgICAgIGlmIHJl\nc3VsdDoKICAgICAgICAgICAgICAgIGRpZ2l0cyA9IHJlc3VsdC5yZXBsYWNl\nKCcgJywgJycpCiAgICAgICAgICAgICAgICBpZiBsZW4oZGlnaXRzKSA+PSA0\nOgogICAgICAgICAgICAgICAgICAgIHdpbm5pbmc0ID0gZGlnaXRzWzo0XQog\nICAgICAgICAgICAgICAgICAgIHBlcmlvZCA9IGludCgnMjAnICsgZHJhd19u\ndW0pIGlmIGRyYXdfbnVtIGVsc2UgTm9uZQogICAgICAgICAgICAgICAgICAg\nIGxvZyhmIuS9k+W9qeWumOaWuTog5pyf5Y+3PXtkcmF3X251bX0o4oaSe3Bl\ncmlvZH0pLCDlj7fnoIE9e3Jlc3VsdH0iKQogICAgICAgICAgICAgICAgICAg\nIHJldHVybiB3aW5uaW5nNCwgcGVyaW9kCiAgICBleGNlcHQgRXhjZXB0aW9u\nIGFzIGU6CiAgICAgICAgbG9nKGYi5L2T5b2p5a6Y5pa55aSx6LSlOiB7ZX0i\nKQogICAgCiAgICB0cnk6CiAgICAgICAgcmVxID0gUmVxdWVzdChIVUlOSUFP\nX1VSTCwgaGVhZGVycz17CiAgICAgICAgICAgICdVc2VyLUFnZW50JzogJ01v\nemlsbGEvNS4wIChXaW5kb3dzIE5UIDEwLjA7IFdpbjY0OyB4NjQpIEFwcGxl\nV2ViS2l0LzUzNy4zNicKICAgICAgICB9KQogICAgICAgIHJlc3AgPSB1cmxv\ncGVuKHJlcSwgdGltZW91dD0xNSkKICAgICAgICBkYXRhID0ganNvbi5sb2Fk\ncyhyZXNwLnJlYWQoKS5kZWNvZGUoJ3V0Zi04JykpCiAgICAgICAgZCA9IGRh\ndGEuZ2V0KCdkYXRhJywge30pCiAgICAgICAgbGFzdCA9IE5vbmUKICAgICAg\nICBpZiBpc2luc3RhbmNlKGQsIGRpY3QpOgogICAgICAgICAgICBsYXN0ID0g\nZC5nZXQoJ2xhc3QnKQogICAgICAgICAgICBpZiBub3QgbGFzdCBhbmQgZC5n\nZXQoJ2RhdGEnLCB7fSkuZ2V0KCdsaXN0Jyk6CiAgICAgICAgICAgICAgICBs\nYXN0ID0gZFsnZGF0YSddWydsaXN0J11bMF0KICAgICAgICBlbGlmIGlzaW5z\ndGFuY2UoZCwgbGlzdCkgYW5kIGxlbihkKSA+IDA6CiAgICAgICAgICAgIGxh\nc3QgPSBkWzBdCiAgICAgICAgaWYgbGFzdDoKICAgICAgICAgICAgY29kZSA9\nIGxhc3QuZ2V0KCdjb2RlJywgJycpCiAgICAgICAgICAgIG9uZSwgdHdvLCB0\naHJlZSwgZm91ciA9IGxhc3QuZ2V0KCdvbmUnLCcnKSwgbGFzdC5nZXQoJ3R3\nbycsJycpLCBsYXN0LmdldCgndGhyZWUnLCcnKSwgbGFzdC5nZXQoJ2ZvdXIn\nLCcnKQogICAgICAgICAgICB3aW5uaW5nNCA9IGYie29uZX17dHdvfXt0aHJl\nZX17Zm91cn0iCiAgICAgICAgICAgIHBlcmlvZCA9IGludCgnMjAnICsgY29k\nZSkgaWYgY29kZSBlbHNlIE5vbmUKICAgICAgICAgICAgaWYgbGVuKHdpbm5p\nbmc0KSA9PSA0IGFuZCB3aW5uaW5nNC5pc2RpZ2l0KCk6CiAgICAgICAgICAg\nICAgICBsb2coZiLngbDpuJ9BUEk6IOacn+WPtz17Y29kZX0o4oaSe3Blcmlv\nZH0pLCDlj7fnoIE9e29uZX17dHdvfXt0aHJlZX17Zm91cn17bGFzdC5nZXQo\nJ2ZpdmUnLCcnKX0iKQogICAgICAgICAgICAgICAgcmV0dXJuIHdpbm5pbmc0\nLCBwZXJpb2QKICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICBs\nb2coZiLngbDpuJ9BUEnlpLHotKU6IHtlfSIpCiAgICAKICAgIHJldHVybiBO\nb25lLCBOb25lCgpkZWYgbWFpbigpOgogICAgbG9nKCI9IiAqIDUwKQogICAg\nbG9nKCLnpZ7ku5nov57lvIDlpZblj7fnoIHoh6rliqjloavlhaXku7vliqHl\nvIDlp4siKQogICAgCiAgICB3aW5uaW5nNCwgYXBpX3BlcmlvZCA9IGZldGNo\nX3dpbm5pbmdfbnVtYmVyKCkKICAgIGlmIG5vdCB3aW5uaW5nNDoKICAgICAg\nICBsb2coIuaJgOaciUFQSeWdh+acquiOt+WPluWIsOW8gOWlluWPt+egge+8\njOi3s+i/hyIpCiAgICAgICAgcmV0dXJuIFRydWUKICAgIAogICAgZGF0YSA9\nIGxvYWRfZGF0YSgpCiAgICBjdXJyZW50X3BlcmlvZCA9IGRhdGEuZ2V0KCdw\nZXJpb2QnLCAwKQogICAgY3VycmVudF93aW5uaW5nID0gZGF0YS5nZXQoJ3dp\nbm5pbmcnLCAnJykKICAgIAogICAgbG9nKGYi5b2T5YmN5pyf5pWwOiB7Y3Vy\ncmVudF9wZXJpb2R9LCDlvZPliY3lvIDlpZblj7c6IHsnKOepuiknIGlmIG5v\ndCBjdXJyZW50X3dpbm5pbmcgZWxzZSBjdXJyZW50X3dpbm5pbmd9IikKICAg\nIGxvZyhmIkFQSeacn+WPtzoge2FwaV9wZXJpb2R9LCDlvIDlpZblj7c6IHt3\naW5uaW5nNH0iKQogICAgCiAgICAjIOagoemqjO+8mkFQSei/lOWbnueahOac\nn+WPt+W/hemhu+S4juW9k+WJjeacn+WMuemFje+8jOS4lOW9k+WJjeacn+aX\noOW8gOWlluWPtwogICAgaWYgY3VycmVudF93aW5uaW5nOgogICAgICAgIGxv\nZyhmIuW9k+WJjeacn+W3suacieW8gOWlluWPtyB7Y3VycmVudF93aW5uaW5n\nfe+8jOi3s+i/hyIpCiAgICAgICAgcmV0dXJuIFRydWUKICAgIAogICAgaWYg\nYXBpX3BlcmlvZCBhbmQgY3VycmVudF9wZXJpb2QgIT0gYXBpX3BlcmlvZDoK\nICAgICAgICBsb2coZiLmnJ/lj7fkuI3ljLnphY06IOW9k+WJjT17Y3VycmVu\ndF9wZXJpb2R9LCBBUEk9e2FwaV9wZXJpb2R977yM6Lez6L+HIikKICAgICAg\nICByZXR1cm4gVHJ1ZQogICAgCiAgICBkYXRhWyd3aW5uaW5nJ10gPSB3aW5u\naW5nNAogICAgbG9nKGYi5aGr5YWl5byA5aWW5Y+3IHt3aW5uaW5nNH0iKQog\nICAgCiAgICB0cnk6CiAgICAgICAgc3VjY2VzcyA9IHNhdmVfZGF0YShkYXRh\nKQogICAgICAgIGlmIHN1Y2Nlc3M6CiAgICAgICAgICAgIGxvZyhmIuaOqOmA\ngeaIkOWKn++8geacn3tjdXJyZW50X3BlcmlvZH0g5byA5aWWe3dpbm5pbmc0\nfSDlt7Lmm7TmlrAiKQogICAgICAgICAgICB1cGRhdGVfaW5kZXhfaHRtbChk\nYXRhKQogICAgICAgIGVsc2U6CiAgICAgICAgICAgIGxvZygi5o6o6YCB5aSx\n6LSlIikKICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICBsb2co\nZiLmjqjpgIHlvILluLg6IHtlfSIpCiAgICAKICAgIGxvZygi5Lu75Yqh5a6M\n5oiQIikKICAgIHJldHVybiBUcnVlCgppZiBfX25hbWVfXyA9PSAnX19tYWlu\nX18nOgogICAgaW1wb3J0IHN5cwogICAgc3VjY2VzcyA9IG1haW4oKQogICAg\nc3lzLmV4aXQoMCBpZiBzdWNjZXNzIGVsc2UgMSkK\n","encoding":"base64","_links":{"self":"https://api.github.com/repos/ebupuba099-lang/shenxianlian/contents/scripts/lottery.py?ref=main","git":"https://api.github.com/repos/ebupuba099-lang/shenxianlian/git/blobs/f3932334d516194b569e12ae127e864fdd61f10c","html":"https://github.com/ebupuba099-lang/shenxianlian/blob/main/scripts/lottery.py"}}
+#!/usr/bin/env python3
+"""获取排列3/排列5开奖号码，填入winning为空的记录（校验期号匹配）"""
+import json
+import os
+import base64
+import requests
+from datetime import datetime
+
+GH_TOKEN = os.environ.get('GH_TOKEN', '')
+REPO = 'ebupuba099-lang/shenxianlian'
+DATA_FILE = 'data/sxl_data.json'
+
+SPORTTERY_API = 'https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry?gameNo=350133&provinceId=0&pageSize=1&is11=0'
+HUINIAO_API = 'http://api.huiniao.top/interface/home/lotteryHistory?type=plw&page=1&limit=1'
+
+def log(msg):
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"[{now}] {msg}", flush=True)
+
+def load_data():
+    headers = {'Authorization': f'token {GH_TOKEN}', 'Accept': 'application/vnd.github.v3.raw'}
+    resp = requests.get(f'https://api.github.com/repos/{REPO}/contents/{DATA_FILE}', headers=headers)
+    resp.raise_for_status()
+    return resp.json()
+
+def save_data(data):
+    headers = {
+        'Authorization': f'token {GH_TOKEN}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    sha_resp = requests.get(f'https://api.github.com/repos/{REPO}/contents/{DATA_FILE}', headers=headers)
+    sha_resp.raise_for_status()
+    sha = sha_resp.json()['sha']
+    content = json.dumps(data, ensure_ascii=False)
+    b64 = base64.b64encode(content.encode('utf-8')).decode()
+    put_resp = requests.put(
+        f'https://api.github.com/repos/{REPO}/contents/{DATA_FILE}',
+        headers=headers,
+        json={'message': 'auto: update lottery results', 'content': b64, 'sha': sha}
+    )
+    put_resp.raise_for_status()
+
+def match_balanced_braces(text, start):
+    """从start位置开始，匹配平衡的花括号，返回匹配的字符串"""
+    count = 0
+    for i in range(start, len(text)):
+        if text[i] == '{':
+            count += 1
+        elif text[i] == '}':
+            count -= 1
+            if count == 0:
+                return text[start:i+1]
+    return None
+
+def update_index_html(data):
+    """更新index.html里的初始S对象，确保页面打开就能显示最新数据"""
+    try:
+        headers2 = {
+            'Authorization': f'token {GH_TOKEN}',
+            'Accept': 'application/vnd.github.v3+json'
+        }
+        sha_resp = requests.get(f'https://api.github.com/repos/{REPO}/contents/index.html', headers=headers2)
+        sha_resp.raise_for_status()
+        sha_data = sha_resp.json()
+        html_sha = sha_data['sha']
+        html_content = base64.b64decode(sha_data['content']).decode('utf-8')
+        
+        s_obj = {
+            'period': data.get('period', 0),
+            'winning': data.get('winning', ''),
+            'sequences': data.get('sequences', {}),
+            'history': data.get('history', [])
+        }
+        s_json = json.dumps(s_obj, ensure_ascii=False, separators=(',', ':'))
+        new_s = 'let S = ' + s_json + ';'
+        
+        # 找到 'let S = ' 的位置，用平衡花括号匹配完整的 S 对象
+        target = 'let S = '
+        idx = html_content.find(target)
+        if idx < 0:
+            log("未找到 'let S = '，无法更新")
+            return False
+        
+        # 跳过 'let S = '，从 '{' 开始匹配
+        brace_start = idx + len(target)
+        matched = match_balanced_braces(html_content, brace_start)
+        if not matched:
+            log("无法匹配 S 对象的平衡花括号")
+            return False
+        
+        old_s = target + matched  # FIX: include the prefix so replacement is correct
+        new_html = html_content.replace(old_s, new_s, 1)
+        
+        if new_html == html_content:
+            log("index.html无需更新")
+            return True
+        
+        encoded = base64.b64encode(new_html.encode('utf-8')).decode('utf-8')
+        body = json.dumps({
+            'message': 'auto: update initial S data in index.html',
+            'content': encoded,
+            'sha': html_sha
+        })
+        put_resp = requests.put(
+            f'https://api.github.com/repos/{REPO}/contents/index.html',
+            headers=headers2,
+            data=body.encode('utf-8')
+        )
+        if put_resp.status_code == 200:
+            log("index.html初始数据已更新")
+            return True
+        else:
+            log(f"index.html更新失败: HTTP {put_resp.status_code}")
+            return False
+    except Exception as e:
+        log(f"更新index.html异常: {e}")
+        return False
+
+def fetch_winning_number():
+    """尝试从多个API获取最新开奖号码，返回 (4位数字字符串, 期号数字) 或 (None, None)"""
+    # 方案1: 体育彩票官方API
+    try:
+        resp = requests.get(SPORTTERY_API, timeout=10)
+        data = resp.json()
+        if data.get('value') and data['value'].get('list'):
+            latest = data['value']['list'][0]
+            result = latest.get('lotteryDrawResult', '')
+            draw_num = latest.get('lotteryDrawNum', '')
+            if result:
+                digits = result.replace(' ', '')
+                if len(digits) >= 4:
+                    winning4 = digits[:4]
+                    period = None
+                    if draw_num:
+                        period = int('20' + draw_num)
+                    log(f"官方API获取成功: 期号={draw_num}(→{period}), 号码={result}, 取前4位={winning4}")
+                    return winning4, period
+    except Exception as e:
+        log(f"官方API失败: {e}")
+
+    # 方案2: 灰鸟API
+    try:
+        resp = requests.get(HUINIAO_API, timeout=10)
+        data = resp.json()
+        if data.get('data'):
+            last = None
+            if isinstance(data['data'], dict):
+                last = data['data'].get('last')
+                if not last and data['data'].get('data', {}).get('list'):
+                    last = data['data']['data']['list'][0]
+            elif isinstance(data['data'], list) and len(data['data']) > 0:
+                last = data['data'][0]
+            if last:
+                one = last.get('one', '')
+                two = last.get('two', '')
+                three = last.get('three', '')
+                four = last.get('four', '')
+                winning4 = f"{one}{two}{three}{four}"
+                code = last.get('code', '')
+                period = None
+                if code:
+                    period = int('20' + code)
+                if len(winning4) == 4 and winning4.isdigit():
+                    log(f"灰鸟API获取成功: 期号={code}(→{period}), 号码={one}{two}{three}{four}{last.get('five','')}")
+                    return winning4, period
+    except Exception as e:
+        log(f"灰鸟API失败: {e}")
+
+    return None, None
+
+def main():
+    log("神仙连开奖号码自动填入任务开始")
+    
+    winning4, api_period = fetch_winning_number()
+    if not winning4:
+        log("所有API均未获取到开奖号码，跳过")
+        return
+
+    data = load_data()
+    
+    rec_period = data.get('period')
+    if api_period and rec_period != api_period:
+        log(f"期号不匹配: API期号={api_period}, 数据期号={rec_period}, 跳过")
+        return
+    
+    if data.get('winning'):
+        log(f"期{rec_period}已有开奖号{data['winning']}，无需填入")
+        return
+    
+    data['winning'] = winning4
+    
+    # Calculate hits
+    sequences = data.get('sequences', {})
+    hits = {}
+    for pos, seq_str in sequences.items():
+        if pos in ['千', '百', '十', '个']:
+            target = int(winning4[{'千':0,'百':1,'十':2,'个':3}[pos]])
+            seq_list = seq_str.split()
+            hit = 0
+            for i, s in enumerate(reversed(seq_list)):
+                if str(target) in s:
+                    hit = len(s)
+                    break
+            hits[pos] = hit
+    data['hits'] = hits
+    
+    log(f"API期号: {api_period}, 开奖号: {winning4}")
+    log(f"填入开奖号 {winning4}")
+    
+    try:
+        save_data(data)
+        log(f"推送成功！期{rec_period} 开奖{winning4} 已更新")
+        update_index_html(data)
+    except Exception as e:
+        log(f"推送异常: {e}")
+
+if __name__ == '__main__':
+    main()
