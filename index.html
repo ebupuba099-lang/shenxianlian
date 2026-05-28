@@ -270,11 +270,19 @@ function calcAutoPeriod(){
   document.querySelector('input[name=periodMode][value='+savedMode+']').checked = true;
   switchPeriodMode(savedMode);
   document.getElementById('watermark').value = S.watermark;
-  // 先从localStorage恢复
+  // 先从localStorage恢复（数组格式转字符串，保证一致性）
   const localData = loadFromLocal();
   if (localData) {
     if (localData.period !== undefined) S.period = localData.period;
-    if (localData.sequences) S.sequences = localData.sequences;
+    if (localData.sequences) {
+      // 兼容旧版数组格式：转成空格分隔字符串
+      const rawSeq = localData.sequences;
+      const converted = {};
+      for (const pos in rawSeq) {
+        converted[pos] = Array.isArray(rawSeq[pos]) ? rawSeq[pos].join(' ') : rawSeq[pos];
+      }
+      S.sequences = converted;
+    }
     if (localData.winning !== undefined) S.winning = localData.winning;
     if (localData.history) S.history = localData.history;
     if (localData.watermark) S.watermark = localData.watermark;
