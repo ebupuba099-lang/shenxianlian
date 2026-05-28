@@ -875,6 +875,8 @@ async function autoLoadFromCloud() {
         console.warn('云端加载失败:', e);
         const ind = document.getElementById('syncIndicator');
         if(ind) ind.textContent = '本地';
+        renderHistoryList();
+        renderPosterHistory();
     }
 }
 
