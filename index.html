@@ -902,11 +902,8 @@ function saveData() {
 }
 // ========== 页面加载完成后初始化 ==========
 window.addEventListener('DOMContentLoaded', () => {
-    // 先用内嵌数据渲染，不读localStorage旧缓存
-    updatePeriod();
-    updatePreview();
-    renderHistoryList();
-    renderPosterHistory();
+    try { updatePeriod(); updatePreview(); } catch(e) { console.warn('updatePreview error:', e); }
+    try { renderHistoryList(); renderPosterHistory(); } catch(e) { console.warn('render error:', e); }
     document.getElementById('winningInput').value = '';
     autoLoadFromCloud().then(() => {
         const autoP = calcAutoPeriod();
