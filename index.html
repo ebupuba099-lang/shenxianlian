@@ -189,7 +189,7 @@ body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#dac6a6;m
     
     <!-- 往期数据 -->
     <div class="card">
-      <div class="card-title">往期数据 <span style="font-size:12px;color:#8d6e63;font-weight:normal">(最多7条)</span></div>
+      <div class="card-title">往期数据 <span style="font-size:12px;color:#8d6e63;font-weight:normal">(全部)</span></div>
       <div class="history-list" id="historyList">
         <div class="history-empty">暂无数据</div>
       </div>
@@ -430,7 +430,7 @@ function applyWinning(){
         winning: v,
         hits: hits
       });
-      if(S.history.length > 7) S.history.pop();
+      // 历史记录不限制数量，全部保留
     }
   }
   updatePreview();
@@ -469,7 +469,7 @@ function addToHistory(){
     hits: S.winning ? calcHits(S.sequences, S.winning) : {}
   };
   S.history.unshift(record);
-  if(S.history.length > 7) S.history.pop();
+  // 历史记录不限制数量，全部保留
 }
 
 function deleteHistory(idx){
