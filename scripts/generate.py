@@ -10,7 +10,6 @@ import random
 import os
 import base64
 from datetime import datetime
-import time
 import os
 from urllib.request import Request, urlopen
 
@@ -25,8 +24,20 @@ def log(msg):
     print(f"[{now}] {msg}", flush=True)
 
 
+def match_balanced_braces(text, start):
+    """从start位置开始，匹配平衡的花括号，返回匹配的字符串"""
+    count = 0
+    for i in range(start, len(text)):
+        if text[i] == '{':
+            count += 1
+        elif text[i] == '}':
+            count -= 1
+            if count == 0:
+                return text[start:i+1]
+    return None
+
 def update_index_html(data):
-    """更新index.html里的embedded-data script标签，确保页面打开就能显示最新数据"""
+    """更新index.html里的初始S对象，确保页面打开就能显示最新数据"""
     import re
     try:
         headers2 = {
@@ -37,44 +48,41 @@ def update_index_html(data):
         sha_resp = urlopen(sha_req, timeout=30)
         sha_data = json.loads(sha_resp.read().decode('utf-8'))
         html_sha = sha_data['sha']
-        html_content = sha_data['content'].decode('utf-8') if isinstance(sha_data['content'], bytes) else sha_data['content']
+        html_content = base64.b64decode(sha_data['content']).decode('utf-8')
         
-        # 构建完整数据
-        full_data = {
+        s_obj = {
             'period': data.get('period', 0),
             'winning': data.get('winning', ''),
             'sequences': data.get('sequences', {}),
-            'history': data.get('history', []),
-            'hits': data.get('hits', {}),
-            'lastUpdate': data.get('lastUpdate', int(time.time() * 1000))
+            'history': data.get('history', [])
         }
-        data_json = json.dumps(full_data, ensure_ascii=False, separators=(',', ':'))
+        s_json = json.dumps(s_obj, ensure_ascii=False, separators=(',', ':'))
+        new_s = 'let S = ' + s_json + ';'
         
-        # 替换 embedded-data script 内容
-        new_html = re.sub(
-            r'(<script id="embedded-data"[^>]*>)(.*?)(</script>)',
-            r'\g<1>' + data_json + r'\g<3>',
-            html_content,
-            count=1,
-            flags=re.DOTALL
-        )
+        # 找到 'let S = ' 的位置，用平衡花括号匹配完整的 S 对象
+        target = 'let S = '
+        idx = html_content.find(target)
+        if idx < 0:
+            log("未找到 'let S = '，无法更新")
+            return False
+        
+        # 跳过 'let S = '，从 '{' 开始匹配
+        brace_start = idx + len(target)
+        matched = match_balanced_braces(html_content, brace_start)
+        if not matched:
+            log("无法匹配 S 对象的平衡花括号")
+            return False
+        
+        old_s = matched
+        new_html = html_content.replace(old_s, new_s, 1)
         
         if new_html == html_content:
-            # 尝试另一种方式：直接替换 let S = {...};
-            # 匹配 "let S = " 后面一直到 "}; --> 的内容
-            pattern = r'(let S = \(function\(\) \{[^}]+return )(\{[^}]+\})(\};?\s*\}\)\(\);)'
-            match = re.search(r'let S = \(function\(\) \{[^}]+return (\{.*\});?\s*\}\)\(\);', html_content, re.DOTALL)
-            if match:
-                new_s = r'let S = (function() { var el = document.getElementById("embedded-data"); if (el) { try { return JSON.parse(el.textContent); } catch(e) {} } return ' + data_json + r'; })();'
-                new_html = re.sub(r'let S = \(function\(\) \{[^}]+return \{[^}]+\};?\s*\}\)\(\);', new_s, html_content, count=1, flags=re.DOTALL)
-            
-        if new_html == html_content:
-            log("index.html无需更新（无变化）")
+            log("index.html无需更新")
             return True
         
         encoded = base64.b64encode(new_html.encode('utf-8')).decode('utf-8')
         body = json.dumps({
-            'message': 'auto: update embedded data in index.html',
+            'message': 'auto: update initial S data in index.html',
             'content': encoded,
             'sha': html_sha
         }).encode('utf-8')
@@ -84,7 +92,7 @@ def update_index_html(data):
         )
         resp2 = urlopen(put_req, timeout=30)
         if resp2.status == 200:
-            log("index.html内嵌数据已更新")
+            log("index.html初始数据已更新")
             return True
         else:
             log(f"index.html更新失败: HTTP {resp2.status}")
@@ -125,7 +133,8 @@ def generate_decreasing_sequence():
         idx = random.randint(0, len(current) - 1)
         current.pop(idx)
         sequences.append(''.join(str(d) for d in current))
-    return sequences
+    # 返回空格分隔字符串，前端updatePreview()期望此格式
+    return ' '.join(sequences)
 
 def main():
     log("=" * 50)
@@ -182,7 +191,6 @@ def main():
     try:
         success = save_data(data)
         if success:
-            data['lastUpdate'] = int(time.time() * 1000)
             log(f"推送成功！新期: {auto_period}")
             update_index_html(data)
         else:
