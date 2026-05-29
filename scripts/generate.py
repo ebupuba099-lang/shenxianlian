@@ -129,7 +129,7 @@ def save_data(data):
 def generate_decreasing_sequence():
     digits = list(range(10))
     random.shuffle(digits)
-    selected = digits[:9]
+    selected = digits[:8]
     sequences = [''.join(str(d) for d in selected)]
     current = list(selected)
     while len(current) > 1:
