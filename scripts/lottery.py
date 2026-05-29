@@ -164,7 +164,7 @@ def fetch_winning_number():
                     winning4 = digits[:4]
                     period = int('20' + draw_num) if draw_num else None
                     log(f"体彩官方: 期号={draw_num}(→{period}), 号码={result}")
-                    return winning4, period
+                    return winning4, period, latest.get('lotteryDrawTime', '')
     except Exception as e:
         log(f"体彩官方失败: {e}")
     
@@ -189,17 +189,17 @@ def fetch_winning_number():
             period = int('20' + code) if code else None
             if len(winning4) == 4 and winning4.isdigit():
                 log(f"灰鸟API: 期号={code}(→{period}), 号码={one}{two}{three}{four}{last.get('five','')}")
-                return winning4, period
+                return winning4, period, ''
     except Exception as e:
         log(f"灰鸟API失败: {e}")
     
-    return None, None
+    return None, None, ''
 
 def main():
     log("=" * 50)
     log("神仙连开奖号码自动填入任务开始")
     
-    winning4, api_period = fetch_winning_number()
+    winning4, api_period, draw_date = fetch_winning_number()
     if not winning4:
         log("所有API均未获取到开奖号码，跳过")
         return True
@@ -216,18 +216,67 @@ def main():
         log(f"当前期已有开奖号 {current_winning}，跳过")
         return True
     
-    # 不做期号严格匹配（我们的期号体系与体彩官方不同）
-    # 只要当前期没有开奖号，且有API数据，就填入
-    log(f"API期号: {api_period}, 我们期号: {current_period}（不要求匹配）")
+    # 用API的开奖日期计算对应我们的期号
+    BASE_DATE = datetime(2026, 5, 21)
+    if draw_date:
+        try:
+            draw_dt = datetime.strptime(draw_date, '%Y-%m-%d')
+            api_our_period = 2026121 + (draw_dt - BASE_DATE).days
+            log(f"API开奖日期: {draw_date} → 我们的期号: {api_our_period}")
+        except:
+            api_our_period = current_period
+            log(f"日期解析失败，使用当前期号: {current_period}")
+    else:
+        api_our_period = current_period - 1  # 无日期时假设昨天
+        log(f"无开奖日期，假设为前一期: {api_our_period}")
     
-    data['winning'] = winning4
-    # 计算命中粒数
-    hits = calc_hits(data.get('sequences', {}), winning4)
-    data['hits'] = hits
-    log(f"填入开奖号 {winning4}, 命中: {hits}")
+    # 将开奖号填入对应期号
+    if api_our_period == current_period:
+        # 开奖号属于当前期，直接填入
+        target_period = current_period
+    else:
+        # 开奖号属于历史期，检查是否需要补填
+        target_period = api_our_period
+        history = data.get('history', [])
+        existing = [h for h in history if h.get('period') == target_period]
+        if existing and existing[0].get('winning'):
+            log(f"期{target_period}已有开奖号 {existing[0]['winning']}，跳过")
+            return True
+        log(f"开奖号属于期{target_period}，非当前期{current_period}，补填历史")
     
-    # 保存当前期到历史（如果有序列数据）
-    if data.get('sequences'):
+    if target_period == current_period:
+        # 填入当前期
+        data['winning'] = winning4
+        hits = calc_hits(data.get('sequences', {}), winning4)
+        data['hits'] = hits
+        log(f"填入当前期 {current_period} 开奖号 {winning4}, 命中: {hits}")
+    else:
+        # 补填历史期
+        hits = calc_hits({}, winning4)  # 历史期可能没有序列
+        history = data.get('history', [])
+        existing = [h for h in history if h.get('period') == target_period]
+        if existing:
+            existing[0]['winning'] = winning4
+            if not existing[0].get('hits') or existing[0]['hits'] == {}:
+                if existing[0].get('sequences'):
+                    existing[0]['hits'] = calc_hits(existing[0]['sequences'], winning4)
+                else:
+                    existing[0]['hits'] = hits
+            log(f"补填历史期 {target_period} 开奖号 {winning4}")
+        else:
+            hist_entry = {
+                'period': target_period,
+                'winning': winning4,
+                'hits': hits
+            }
+            history.insert(0, hist_entry)
+            if len(history) > 10:
+                history = history[:10]
+            data['history'] = history
+            log(f"新建历史期 {target_period} 开奖号 {winning4}")
+    
+    # 如果当前期已有开奖号，也保存到历史
+    if target_period == current_period and data.get('sequences') and data.get('winning'):
         history = data.get('history', [])
         existing = [h for h in history if h.get('period') == current_period]
         if not existing:
@@ -235,7 +284,7 @@ def main():
                 'period': current_period,
                 'sequences': data.get('sequences', {}),
                 'winning': winning4,
-                'hits': hits
+                'hits': data.get('hits', {})
             }
             history.insert(0, hist_entry)
             if len(history) > 10:
