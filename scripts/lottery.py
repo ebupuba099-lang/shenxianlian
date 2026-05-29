@@ -216,9 +216,9 @@ def main():
         log(f"当前期已有开奖号 {current_winning}，跳过")
         return True
     
-    if api_period and current_period != api_period:
-        log(f"期号不匹配: 当前={current_period}, API={api_period}，跳过")
-        return True
+    # 不做期号严格匹配（我们的期号体系与体彩官方不同）
+    # 只要当前期没有开奖号，且有API数据，就填入
+    log(f"API期号: {api_period}, 我们期号: {current_period}（不要求匹配）")
     
     data['winning'] = winning4
     # 计算命中粒数
