@@ -188,8 +188,9 @@ def fetch_winning_number():
             winning4 = f"{one}{two}{three}{four}"
             period = int('20' + code) if code else None
             if len(winning4) == 4 and winning4.isdigit():
-                log(f"灰鸟API: 期号={code}(→{period}), 号码={one}{two}{three}{four}{last.get('five','')}")
-                return winning4, period, ''
+                draw_date = last.get('day', '')
+                log(f"灰鸟API: 期号={code}(→{period}), 号码={one}{two}{three}{four}{last.get('five','')}, 日期={draw_date}")
+                return winning4, period, draw_date
     except Exception as e:
         log(f"灰鸟API失败: {e}")
     
