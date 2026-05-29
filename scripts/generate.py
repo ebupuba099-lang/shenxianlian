@@ -57,24 +57,27 @@ def update_index_html(data):
             'history': data.get('history', [])
         }
         s_json = json.dumps(s_obj, ensure_ascii=False, separators=(',', ':'))
-        new_s = 'let S = ' + s_json + ';'
-        
-        # 找到 'let S = ' 的位置，用平衡花括号匹配完整的 S 对象
+        # 找到完整的 let S = {...};;; 语句并替换
         target = 'let S = '
         idx = html_content.find(target)
         if idx < 0:
             log("未找到 'let S = '，无法更新")
             return False
         
-        # 跳过 'let S = '，从 '{' 开始匹配
         brace_start = idx + len(target)
         matched = match_balanced_braces(html_content, brace_start)
         if not matched:
             log("无法匹配 S 对象的平衡花括号")
             return False
         
-        old_s = matched
-        new_html = html_content.replace(old_s, new_s, 1)
+        # 匹配到语句末尾的分号（;;;）
+        end_pos = brace_start + len(matched)
+        while end_pos < len(html_content) and html_content[end_pos] == ';':
+            end_pos += 1
+        
+        old_statement = html_content[idx:end_pos]
+        new_statement = 'let S = ' + s_json + ';;;'
+        new_html = html_content.replace(old_statement, new_statement, 1)
         
         if new_html == html_content:
             log("index.html无需更新")
@@ -126,7 +129,7 @@ def save_data(data):
 def generate_decreasing_sequence():
     digits = list(range(10))
     random.shuffle(digits)
-    selected = digits[:8]
+    selected = digits[:9]
     sequences = [''.join(str(d) for d in selected)]
     current = list(selected)
     while len(current) > 1:
@@ -144,7 +147,7 @@ def main():
     
     today = datetime.now()
     days_diff = (today - BASE_DATE).days
-    today_period = 2026121 + days_diff
+    today_period = 2026131 + days_diff
     
     current_period = data.get('period', 0)
     log(f"当前期数: {current_period}, 历史记录: {len(data.get('history',[]))}条")
@@ -174,7 +177,7 @@ def main():
             }
             history.insert(0, hist_entry)
             if len(history) > 7:
-                history = history[:10]
+                history = history[:7]
             data['history'] = history
     
     data['period'] = auto_period
