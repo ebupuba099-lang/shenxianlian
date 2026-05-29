@@ -17,7 +17,7 @@ GH_TOKEN = os.environ.get('GH_TOKEN', os.environ.get('GIST_TOKEN', ''))
 REPO = 'ebupuba099-lang/shenxianlian'
 DATA_FILE = 'data/sxl_data.json'
 
-BASE_DATE = datetime(2026, 5, 11)
+BASE_DATE = datetime(2026, 5, 21)
 
 def log(msg):
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -126,7 +126,7 @@ def save_data(data):
 def generate_decreasing_sequence():
     digits = list(range(10))
     random.shuffle(digits)
-    selected = digits[:9]
+    selected = digits[:8]
     sequences = [''.join(str(d) for d in selected)]
     current = list(selected)
     while len(current) > 1:
