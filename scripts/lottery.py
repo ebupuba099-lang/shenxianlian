@@ -122,6 +122,28 @@ def save_data(data):
     resp = urlopen(put_req, timeout=30)
     return resp.status == 200
 
+
+def calc_hits(sequences, winning):
+    """计算命中粒数：每位的开奖数字在对应序列中出现的最深层级"""
+    hits = {}
+    if not winning or len(winning) != 4:
+        return hits
+    positions = ['千', '百', '十', '个']
+    for i, pos in enumerate(positions):
+        seq = sequences.get(pos, '')
+        if not seq:
+            hits[pos] = 0
+            continue
+        nums = seq.split(' ')
+        target = winning[i]
+        hit_level = 0
+        for j in range(len(nums) - 1, -1, -1):
+            if target in nums[j]:
+                hit_level = len(nums[j])
+                break
+        hits[pos] = hit_level
+    return hits
+
 def fetch_winning_number():
     """获取最新开奖号码，返回 (4位数字, API期号) 或 (None, None)"""
     try:
@@ -199,7 +221,26 @@ def main():
         return True
     
     data['winning'] = winning4
-    log(f"填入开奖号 {winning4}")
+    # 计算命中粒数
+    hits = calc_hits(data.get('sequences', {}), winning4)
+    data['hits'] = hits
+    log(f"填入开奖号 {winning4}, 命中: {hits}")
+    
+    # 保存当前期到历史（如果有序列数据）
+    if data.get('sequences'):
+        history = data.get('history', [])
+        existing = [h for h in history if h.get('period') == current_period]
+        if not existing:
+            hist_entry = {
+                'period': current_period,
+                'sequences': data.get('sequences', {}),
+                'winning': winning4,
+                'hits': hits
+            }
+            history.insert(0, hist_entry)
+            if len(history) > 10:
+                history = history[:10]
+            data['history'] = history
     
     try:
         success = save_data(data)
