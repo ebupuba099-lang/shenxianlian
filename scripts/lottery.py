@@ -56,24 +56,27 @@ def update_index_html(data):
             'history': data.get('history', [])
         }
         s_json = json.dumps(s_obj, ensure_ascii=False, separators=(',', ':'))
-        new_s = 'let S = ' + s_json + ';'
-        
-        # 找到 'let S = ' 的位置，用平衡花括号匹配完整的 S 对象
+        # 找到完整的 let S = {...};;; 语句并替换
         target = 'let S = '
         idx = html_content.find(target)
         if idx < 0:
             log("未找到 'let S = '，无法更新")
             return False
         
-        # 跳过 'let S = '，从 '{' 开始匹配
         brace_start = idx + len(target)
         matched = match_balanced_braces(html_content, brace_start)
         if not matched:
             log("无法匹配 S 对象的平衡花括号")
             return False
         
-        old_s = matched
-        new_html = html_content.replace(old_s, new_s, 1)
+        # 匹配到语句末尾的分号（;;;）
+        end_pos = brace_start + len(matched)
+        while end_pos < len(html_content) and html_content[end_pos] == ';':
+            end_pos += 1
+        
+        old_statement = html_content[idx:end_pos]
+        new_statement = 'let S = ' + s_json + ';;;'
+        new_html = html_content.replace(old_statement, new_statement, 1)
         
         if new_html == html_content:
             log("index.html无需更新")
@@ -222,7 +225,7 @@ def main():
     if draw_date:
         try:
             draw_dt = datetime.strptime(draw_date, '%Y-%m-%d')
-            api_our_period = 2026121 + (draw_dt - BASE_DATE).days
+            api_our_period = 2026131 + (draw_dt - BASE_DATE).days
             log(f"API开奖日期: {draw_date} → 我们的期号: {api_our_period}")
         except:
             api_our_period = current_period
@@ -272,7 +275,7 @@ def main():
             }
             history.insert(0, hist_entry)
             if len(history) > 10:
-                history = history[:10]
+                history = history[:7]
             data['history'] = history
             log(f"新建历史期 {target_period} 开奖号 {winning4}")
     
@@ -289,7 +292,7 @@ def main():
             }
             history.insert(0, hist_entry)
             if len(history) > 10:
-                history = history[:10]
+                history = history[:7]
             data['history'] = history
     
     try:
