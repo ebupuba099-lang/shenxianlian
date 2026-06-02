@@ -274,7 +274,7 @@ def main():
                 'hits': hits
             }
             history.insert(0, hist_entry)
-            if len(history) > 10:
+            if len(history) > 7:
                 history = history[:7]
             data['history'] = history
             log(f"新建历史期 {target_period} 开奖号 {winning4}")
@@ -291,7 +291,7 @@ def main():
                 'hits': data.get('hits', {})
             }
             history.insert(0, hist_entry)
-            if len(history) > 10:
+            if len(history) > 7:
                 history = history[:7]
             data['history'] = history
     
