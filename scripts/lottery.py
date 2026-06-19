@@ -57,10 +57,10 @@ def update_index_html(data):
         }
         s_json = json.dumps(s_obj, ensure_ascii=False, separators=(',', ':'))
         # 找到完整的 let S = {...};;; 语句并替换
-        target = 'let S = '
+        target = '<script id="embedded-data" type="application/json">'
         idx = html_content.find(target)
         if idx < 0:
-            log("未找到 'let S = '，无法更新")
+            log("未找到 embedded-data script 标签，无法更新")
             return False
         
         brace_start = idx + len(target)
@@ -69,14 +69,18 @@ def update_index_html(data):
             log("无法匹配 S 对象的平衡花括号")
             return False
         
-        # 匹配到语句末尾的分号（;;;）
-        end_pos = brace_start + len(matched)
-        while end_pos < len(html_content) and html_content[end_pos] == ';':
-            end_pos += 1
+        # JSON对象结束位置
+        json_end = brace_start + len(matched)
+        # 找到</script>结束标签
+        script_end = html_content.find('</script>', json_end)
+        if script_end < 0:
+            log("未找到 </script> 结束标签")
+            return False
         
-        old_statement = html_content[idx:end_pos]
-        new_statement = 'let S = ' + s_json + ';;;'
-        new_html = html_content.replace(old_statement, new_statement, 1)
+        old_json = html_content[brace_start:json_end]
+        new_statement = s_json
+        # 替换script标签内的JSON内容
+        new_html = html_content[:brace_start] + new_statement + html_content[json_end:]
         
         if new_html == html_content:
             log("index.html无需更新")
