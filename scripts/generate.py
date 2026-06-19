@@ -54,14 +54,15 @@ def update_index_html(data):
             'period': data.get('period', 0),
             'winning': data.get('winning', ''),
             'sequences': data.get('sequences', {}),
-            'history': data.get('history', [])
+            'history': data.get('history', []),
+            'hits': data.get('hits', {})
         }
         s_json = json.dumps(s_obj, ensure_ascii=False, separators=(',', ':'))
         # 找到完整的 let S = {...};;; 语句并替换
         target = '<script id="embedded-data" type="application/json">'
         idx = html_content.find(target)
         if idx < 0:
-            log("未找到 'let S = '，无法更新")
+            log("未找到 embedded-data script 标签，无法更新")
             return False
         
         brace_start = idx + len(target)
