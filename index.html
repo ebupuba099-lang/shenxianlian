@@ -847,7 +847,7 @@ let pollTimer = null;
 // 自动从同域数据文件加载最新数据
 async function autoLoadFromCloud() {
     try {
-        const resp = await fetch('https://cdn.jsdelivr.net/gh/ebupuba099-lang/shenxianlian@main/data/sxl_data.json', {headers:{'Accept':'application/vnd.github.v3.raw'}});
+        const resp = await fetch('https://cdn.jsdelivr.net/gh/ebupuba099-lang/shenxianlian@main/data/sxl_data.json?_t=' + Date.now(), {headers:{'Accept':'application/vnd.github.v3.raw'}});
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const cloudData = await resp.json();
         if (!cloudData || !cloudData.period) throw new Error('Invalid data');
