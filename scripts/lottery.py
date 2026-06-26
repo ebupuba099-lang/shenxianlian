@@ -357,60 +357,74 @@ def main():
         log(f"当前期已有开奖号 {current_winning}，跳过")
         return True
     
-    if api_period == current_period:
-        target_period = current_period
-    else:
-        target_period = api_period
-        history = data.get('history', [])
-        existing = [h for h in history if h.get('period') == target_period]
-        if existing and existing[0].get('winning'):
-            log(f"期{target_period}已有开奖号 {existing[0]['winning']}，跳过")
-            return True
-        log(f"开奖号属于期{target_period}，非当前期{current_period}，填入历史")
+    # 安全校验：获取到的期号不能大于当前期+1（防止错误数据）
+    if api_period > current_period + 1:
+        log(f"期号异常: api_period={api_period} > current_period+1={current_period+1}，丢弃")
+        return True
+    
+    # 安全校验：获取到的期号不能太小（防止过期数据污染）
+    if api_period < current_period - 10:
+        log(f"期号过旧: api_period={api_period} << current_period={current_period}，丢弃")
+        return True
+    
+    target_period = api_period
+    history = data.get('history', [])
+    
+    # 检查 history 中是否已有此期号且已有开奖号码
+    existing_in_history = [h for h in history if h.get('period') == target_period and h.get('winning')]
+    if existing_in_history:
+        log(f"期{target_period}已在历史中有开奖号 {existing_in_history[0]['winning']}，跳过")
+        return True
     
     if target_period == current_period:
+        # 填入当前期
         data['winning'] = winning4
         hits = calc_hits(data.get('sequences', {}), winning4)
         data['hits'] = hits
         log(f"填入当前期 {current_period} 开奖号 {winning4}, 命中: {hits}")
-    else:
-        hits = calc_hits({}, winning4)
-        history = data.get('history', [])
-        existing = [h for h in history if h.get('period') == target_period]
-        if existing:
-            existing[0]['winning'] = winning4
-            if not existing[0].get('hits') or existing[0]['hits'] == {}:
-                if existing[0].get('sequences'):
-                    existing[0]['hits'] = calc_hits(existing[0]['sequences'], winning4)
-                else:
-                    existing[0]['hits'] = hits
-            log(f"填入历史期 {target_period} 开奖号 {winning4}")
-        else:
-            hist_entry = {
-                'period': target_period,
-                'winning': winning4,
-                'hits': hits
-            }
-            history.insert(0, hist_entry)
-            if len(history) > 7:
-                history = history[:7]
-            data['history'] = history
-            log(f"新建历史期 {target_period} 开奖号 {winning4}")
-    
-    if target_period == current_period and data.get('sequences') and data.get('winning'):
-        history = data.get('history', [])
+        
+        # 将当前期移入 history（带 sequences 和 hits）
         existing = [h for h in history if h.get('period') == current_period]
         if not existing:
             hist_entry = {
                 'period': current_period,
                 'sequences': data.get('sequences', {}),
                 'winning': winning4,
-                'hits': data.get('hits', {})
+                'hits': hits
             }
             history.insert(0, hist_entry)
-            if len(history) > 7:
-                history = history[:7]
-            data['history'] = history
+            log(f"当前期 {current_period} 已移入历史")
+    else:
+        # 填入历史期（非当前期）
+        hits = calc_hits({}, winning4)
+        existing = [h for h in history if h.get('period') == target_period]
+        if existing:
+            # 更新已有条目
+            existing[0]['winning'] = winning4
+            if existing[0].get('sequences'):
+                existing[0]['hits'] = calc_hits(existing[0]['sequences'], winning4)
+            else:
+                existing[0]['hits'] = hits
+            log(f"更新历史期 {target_period} 开奖号 {winning4}")
+        else:
+            # 新建历史条目
+            hist_entry = {
+                'period': target_period,
+                'winning': winning4,
+                'hits': hits
+            }
+            history.insert(0, hist_entry)
+            log(f"新建历史期 {target_period} 开奖号 {winning4}")
+    
+    # 去重并按期号降序排列，保留最近7条
+    seen = set()
+    unique_history = []
+    for h in sorted(history, key=lambda x: x.get('period', 0), reverse=True):
+        pid = h.get('period')
+        if pid not in seen:
+            seen.add(pid)
+            unique_history.append(h)
+    data['history'] = unique_history[:7]
     
     try:
         success = save_data(data)
