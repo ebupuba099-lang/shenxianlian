@@ -264,26 +264,22 @@ function calcAutoPeriod(){
   document.querySelector('input[name=periodMode][value='+savedMode+']').checked = true;
   switchPeriodMode(savedMode);
   document.getElementById('watermark').value = S.watermark;
-  // 先从localStorage恢复（数组格式转字符串，保证一致性）
+  // localStorage 仅做增量补充，不覆盖 HTML 内嵌的权威数据
+  // HTML 中的 let S 是每次部署时更新的权威来源
   const localData = loadFromLocal();
-  // 版本检查：版本不匹配时清除旧缓存
-  if (localData && localData.version !== S.version) {
-    localStorage.removeItem('sxlData');
-    console.log('Data version mismatch, cleared old cache');
-  } else if (localData) {
-    if (localData.period !== undefined) S.period = localData.period;
-    if (localData.sequences) {
-      // 兼容旧版数组格式：转成空格分隔字符串
-      const rawSeq = localData.sequences;
-      const converted = {};
-      for (const pos in rawSeq) {
-        converted[pos] = Array.isArray(rawSeq[pos]) ? rawSeq[pos].join(' ') : rawSeq[pos];
-      }
-      S.sequences = converted;
+  if (localData && localData.version === S.version) {
+    // 版本匹配：只补充本地有而 HTML 没有的数据（如用户手动修改的期号）
+    // 但绝不覆盖 HTML 内嵌的 sequences 和 history
+    if (localData.winning && !S.winning) S.winning = localData.winning;
+    if (localData.hits && (!S.hits || Object.keys(S.hits).length === 0)) S.hits = localData.hits;
+    if (localData.watermark && !S.watermark) S.watermark = localData.watermark;
+    if (localData.period > S.period) S.period = localData.period;
+  } else {
+    // 版本不匹配或无本地数据：清除旧缓存，使用 HTML 内嵌数据
+    if (localData) {
+      localStorage.removeItem('sxlData');
+      console.log('Data version mismatch, cleared old cache');
     }
-    if (localData.winning !== undefined) S.winning = localData.winning;
-    if (localData.history) S.history = localData.history;
-    if (localData.watermark) S.watermark = localData.watermark;
   }
   updatePreview();
 })();
@@ -849,6 +845,7 @@ function updateWinningBtnText() {
 let pollTimer = null;
 
 // 自动从同域数据文件加载最新数据
+// 策略：云端数据仅用于更新开奖号码，不覆盖已有的 history 和 sequences
 async function autoLoadFromCloud() {
     try {
         const resp = await fetch('https://raw.githubusercontent.com/ebupuba099-lang/shenxianlian/main/data/sxl_data.json?_t=' + Date.now(), {headers:{'Accept':'application/vnd.github.v3.raw'}});
@@ -856,11 +853,35 @@ async function autoLoadFromCloud() {
         const cloudData = await resp.json();
         if (!cloudData || !cloudData.period) throw new Error('Invalid data');
         
-        S.period = cloudData.period;
-        if (cloudData.sequences) S.sequences = cloudData.sequences;
-        if (cloudData.winning !== undefined) S.winning = cloudData.winning;
-        if (cloudData.history) S.history = cloudData.history;
-        if (cloudData.hits) S.hits = cloudData.hits;
+        // 仅当云端期号更新时才更新期号
+        if (cloudData.period > S.period) {
+            S.period = cloudData.period;
+        }
+        
+        // 开奖号码：云端有值且本地为空时才更新
+        if (cloudData.winning && !S.winning) {
+            S.winning = cloudData.winning;
+        }
+        
+        // hits：云端有值且本地为空时才更新
+        if (cloudData.hits && (!S.hits || Object.keys(S.hits).length === 0)) {
+            S.hits = cloudData.hits;
+        }
+        
+        // 智能合并 history：云端新条目补充到本地，但不覆盖已有条目
+        if (cloudData.history && Array.isArray(cloudData.history)) {
+            const existingPeriods = new Set(S.history.map(h => h.period));
+            for (const h of cloudData.history) {
+                if (!existingPeriods.has(h.period)) {
+                    S.history.push(h);
+                    existingPeriods.add(h.period);
+                }
+            }
+            // 按期号降序排列，保留最近7条
+            S.history.sort((a, b) => b.period - a.period);
+            if (S.history.length > 7) S.history = S.history.slice(0, 7);
+        }
+        
         S.lastUpdate = cloudData.lastUpdate || Date.now();
         
         saveDataLocal();
@@ -944,18 +965,10 @@ function generateNewPeriod() {
 
 // 检查是否需要生成新期（每天6点后自动切换）
 function checkAndSwitchPeriod() {
-    const now = new Date();
-    const hour = now.getHours();
     const currentPeriod = calcAutoPeriod();
     
-    // 如果当前显示的期号小于自动计算的期号
+    // 如果当前显示的期号小于自动计算的期号，才切换
     if (S.period < currentPeriod) {
-        generateNewPeriod();
-        return true;
-    }
-    
-    // 如果是6点到7点之间，且当前期号等于自动期号减1（昨天），也切换
-    if (hour >= 6 && hour < 7 && S.period === currentPeriod - 1) {
         generateNewPeriod();
         return true;
     }
