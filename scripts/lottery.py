@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-神仙连 - 每日开奖号码自动填入脚本 v4
+神仙连 - 每日开奖号码自动填入脚本 v5
 数据源优先级：
-1. 彩经网移动端 m.cjcp.cn（服务端渲染HTML，已验证可用）
-2. 江苏体彩网 api.js-lottery.com（服务端渲染HTML）
+1. 彩经网移动端 m.cjcp.cn（服务器渲染HTML，已验证可用）
+2. 江苏体彩网 api.js-lottery.com（服务器渲染HTML）
 3. 体彩官方API（备用）
+
+v5 修复：同时更新 let S 变量和 embedded-data script 标签
 """
 
 import json
@@ -48,12 +50,12 @@ def _make_request(url, timeout=20, parse_json=False, extra_headers=None):
         log(f"  请求失败 [{url[:60]}]: {e}")
         return None
 
-# ============================================================
-#  数据源1：彩经网移动端（服务端渲染，已验证）
-# ============================================================
+# ==========================================
+#  数据源1：彩经网移动端（服务器渲染，已验证）
+# ==========================================
 
 def fetch_from_cjcp():
-    """从彩经网移动端获取开奖号码 - 服务端渲染HTML"""
+    """从彩经网移动端获取开奖号码 - 服务器渲染HTML"""
     log("尝试彩经网移动端...")
     
     html = _make_request('https://m.cjcp.cn/kaijiang/pl5/', timeout=20)
@@ -70,11 +72,9 @@ def fetch_from_cjcp():
     our_period = int(period_m.group(1))
     
     # 提取开奖号码：<span class="qiu_red">2</span>... 格式
-    # 找期号后面的所有 qiu_red span
     period_pos = period_m.start()
     segment = html[period_pos:period_pos+5000]
     
-    # 匹配连续的5个qiu_red span
     num_matches = re.findall(r'<span class="qiu_red">(\d)</span>', segment)
     if len(num_matches) >= 5:
         digits = ''.join(num_matches[:5])
@@ -82,7 +82,7 @@ def fetch_from_cjcp():
         log(f"  彩经网成功: 期{our_period} 号码{digits} -> {winning4}")
         return winning4, our_period
     
-    # 备用：匹配文本中的号码格式
+    # 备用匹配
     num_m = re.search(r'(\d{7})期开奖.*?(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)', segment, re.DOTALL)
     if num_m:
         digits = ''.join(num_m.groups()[1:6])
@@ -93,9 +93,9 @@ def fetch_from_cjcp():
     log("  彩经网解析失败")
     return None, None
 
-# ============================================================
-#  数据源2：江苏体彩网（服务端渲染）
-# ============================================================
+# ==========================================
+#  数据源2：江苏体彩网（服务器渲染）
+# ==========================================
 
 def fetch_from_jslottery():
     """从江苏体彩网获取开奖公告"""
@@ -126,9 +126,9 @@ def fetch_from_jslottery():
     log("  江苏体彩网未找到排列五开奖公告")
     return None, None
 
-# ============================================================
+# ==========================================
 #  数据源3：体彩官方API（备用）
-# ============================================================
+# ==========================================
 
 def fetch_from_sporttery():
     """从体彩官方API获取"""
@@ -153,9 +153,9 @@ def fetch_from_sporttery():
             log(f"  体彩官方API解析失败: {e}")
     return None, None
 
-# ============================================================
+# ==========================================
 #  主获取函数
-# ============================================================
+# ==========================================
 
 def fetch_winning_number():
     """多源获取最新开奖号码，返回 (4位数字, 期号) 或 (None, None)"""
@@ -178,9 +178,9 @@ def fetch_winning_number():
     log("所有数据源均未获取到开奖号码")
     return None, None
 
-# ============================================================
-#  数据读写与更新（与之前相同）
-# ============================================================
+# ==========================================
+#  match_balanced_braces - 匹配平衡的大括号
+# ==========================================
 
 def match_balanced_braces(text, start):
     count = 0
@@ -192,6 +192,10 @@ def match_balanced_braces(text, start):
             if count == 0:
                 return text[start:i+1]
     return None
+
+# ==========================================
+#  更新 index.html - v5 同时更新 let S 和 embedded-data
+# ==========================================
 
 def update_index_html(data):
     try:
@@ -212,27 +216,64 @@ def update_index_html(data):
             'history': data.get('history', [])
         }
         s_json = json.dumps(s_obj, ensure_ascii=False, separators=(',', ':'))
+        
+        new_html = html_content
+        updated = False
+        
+        # ============================================================
+        # 方式1：更新 embedded-data script 标签
+        # ============================================================
         target = '<script id="embedded-data" type="application/json">'
         idx = html_content.find(target)
-        if idx < 0:
+        if idx >= 0:
+            brace_start = idx + len(target)
+            matched = match_balanced_braces(html_content, brace_start)
+            if matched:
+                json_end = brace_start + len(matched)
+                new_html = new_html[:brace_start] + s_json + new_html[json_end:]
+                updated = True
+                log("embedded-data 标签已更新")
+            else:
+                log("无法匹配 embedded-data 中的大括号")
+        else:
             log("未找到 embedded-data script 标签")
-            return False
         
-        brace_start = idx + len(target)
-        matched = match_balanced_braces(html_content, brace_start)
-        if not matched:
-            log("无法匹配 S 对象")
-            return False
+        # ============================================================
+        # 方式2：更新 let S = {...} 变量（页面实际使用的数据）
+        # ============================================================
+        # 查找 let S = {...};
+        s_match = re.search(r'let\s+S\s*=\s*\{', new_html)
+        if s_match:
+            brace_start = s_match.end() - 1  # 指向 {
+            matched = match_balanced_braces(new_html, brace_start)
+            if matched:
+                json_end = brace_start + len(matched)
+                new_html = new_html[:brace_start] + s_json + new_html[json_end:]
+                updated = True
+                log("let S 变量已更新")
+            else:
+                log("无法匹配 let S 中的大括号")
+        else:
+            # 备用：var S = {...};
+            s_match = re.search(r'var\s+S\s*=\s*\{', new_html)
+            if s_match:
+                brace_start = s_match.end() - 1
+                matched = match_balanced_braces(new_html, brace_start)
+                if matched:
+                    json_end = brace_start + len(matched)
+                    new_html = new_html[:brace_start] + s_json + new_html[json_end:]
+                    updated = True
+                    log("var S 变量已更新")
+            else:
+                log("未找到 let S = 或 var S = 变量")
         
-        json_end = brace_start + len(matched)
-        new_html = html_content[:brace_start] + s_json + html_content[json_end:]
-        
-        if new_html == html_content:
+        if not updated or new_html == html_content:
+            log("index.html 无需更新")
             return True
         
         encoded = base64.b64encode(new_html.encode('utf-8')).decode('utf-8')
         body = json.dumps({
-            'message': 'auto: update embedded data in index.html',
+            'message': 'auto: update embedded data and let S in index.html',
             'content': encoded,
             'sha': html_sha
         }).encode('utf-8')
@@ -242,13 +283,17 @@ def update_index_html(data):
         )
         resp2 = urlopen(put_req, timeout=30)
         if resp2.status == 200:
-            log("index.html 已更新")
+            log("index.html 已更新（embedded-data + let S）")
             return True
         log(f"index.html更新失败: HTTP {resp2.status}")
         return False
     except Exception as e:
         log(f"更新index.html异常: {e}")
         return False
+
+# ==========================================
+#  数据读写
+# ==========================================
 
 def load_data():
     headers = {'Authorization': f'token {GH_TOKEN}', 'Accept': 'application/vnd.github.v3.raw'}
@@ -294,7 +339,7 @@ def calc_hits(sequences, winning):
 
 def main():
     log("=" * 50)
-    log("神仙连开奖号码自动填入任务开始 v4 (彩经网版)")
+    log("神仙连开奖号码自动填入任务开始 v5 (修复let S + 彩经网)")
     
     winning4, api_period = fetch_winning_number()
     if not winning4:
@@ -306,7 +351,7 @@ def main():
     current_winning = data.get('winning', '')
     
     log(f"当前期数: {current_period}, 当前开奖号: {'(空)' if not current_winning else current_winning}")
-    log(f"爬取到期号: {api_period}, 开奖号: {winning4}")
+    log(f"新获取到期号: {api_period}, 开奖号: {winning4}")
     
     if current_winning:
         log(f"当前期已有开奖号 {current_winning}，跳过")
