@@ -155,7 +155,8 @@ def main():
     today_period = 2026131 + days_diff
     
     current_period = data.get('period', 0)
-    log(f"当前期数: {current_period}, 历史记录: {len(data.get('history',[]))}条")
+    current_winning = data.get('winning', '')
+    log(f"当前期数: {current_period}, 开奖号: {'(空)' if not current_winning else current_winning}, 历史记录: {len(data.get('history',[]))}条")
     
     auto_period = today_period
     log(f"自动计算期数: {auto_period}")
@@ -163,6 +164,24 @@ def main():
     if current_period >= auto_period:
         log(f"当前期{current_period}已是最新的{auto_period}，无需生成")
         return True
+    
+    # 兜底机制：如果当前期超过2天还没开奖，也继续生成避免永久卡死
+    if not current_winning and current_period > 0:
+        # 使用 lastGenerateAttempt 字段追踪首次检测时间（不受 save_data 影响）
+        last_attempt = data.get('lastGenerateAttempt', 0)
+        now_ts = int(datetime.now().timestamp() * 1000)
+        if last_attempt == 0:
+            # 首次检测到未开奖，记录时间戳
+            data['lastGenerateAttempt'] = now_ts
+            save_data(data)
+            log(f"当前期{current_period}还未开奖，首次记录等待时间戳")
+            return True
+        stale_hours = (now_ts - last_attempt) / 3600000
+        if stale_hours < 48:
+            log(f"当前期{current_period}还未开奖（{stale_hours:.1f}小时前首次检测），今天不生成新一期")
+            return True
+        else:
+            log(f"当前期{current_period}超过2天未开奖，跳过继续生成下一期")
     
     qian = generate_decreasing_sequence()
     bai = generate_decreasing_sequence()
@@ -189,6 +208,8 @@ def main():
     data['sequences'] = {'千': qian, '百': bai, '十': shi, '个': ge}
     data['winning'] = ''
     data['hits'] = {}
+    # 生成成功后清除 lastGenerateAttempt
+    data.pop('lastGenerateAttempt', None)
     
     log(f"新期 {auto_period} 生成完成")
     log(f"  千: {' '.join(qian[:3])}")
