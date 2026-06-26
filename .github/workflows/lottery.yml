@@ -1,7 +1,10 @@
 name: 神仙连开奖填入
+
 on:
   schedule:
-    - cron: '0 14 * * *'
+    - cron: '0 14 * * *'   # UTC 14:00 = 北京时间 22:00
+    - cron: '0 16 * * *'   # UTC 16:00 = 北京时间 00:00
+    - cron: '30 2 * * *'   # UTC 02:30 = 北京时间 10:30（上午补抓）
   workflow_dispatch:
 
 permissions:
@@ -15,8 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: 执行开奖填入脚本
+      - run: python scripts/lottery.py
         env:
           TZ: Asia/Shanghai
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: python scripts/lottery.py
