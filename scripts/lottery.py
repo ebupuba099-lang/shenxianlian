@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-神仙连 - 每日开奖号码自动填入脚本 v3
-通过百度搜索爬取开奖号码（服务端渲染，绕过API拦截）
-备用：东方财富网、江苏体彩网、体彩官方API
+神仙连 - 每日开奖号码自动填入脚本 v4
+数据源优先级：
+1. 彩经网移动端 m.cjcp.cn（服务端渲染HTML，已验证可用）
+2. 江苏体彩网 api.js-lottery.com（服务端渲染HTML）
+3. 体彩官方API（备用）
 """
 
 import json
@@ -14,7 +16,6 @@ import ssl
 import re
 from datetime import datetime
 from urllib.request import Request, urlopen
-from urllib.parse import quote
 
 GH_TOKEN = os.environ.get('GH_TOKEN', os.environ.get('GIST_TOKEN', ''))
 REPO = 'ebupuba099-lang/shenxianlian'
@@ -24,8 +25,7 @@ def log(msg):
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{now}] {msg}", flush=True)
 
-def _make_request(url, timeout=15, parse_json=False, extra_headers=None):
-    """通用请求函数"""
+def _make_request(url, timeout=20, parse_json=False, extra_headers=None):
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -49,69 +49,65 @@ def _make_request(url, timeout=15, parse_json=False, extra_headers=None):
         return None
 
 # ============================================================
-#  数据源1：百度搜索（最可靠，服务端渲染HTML）
+#  数据源1：彩经网移动端（服务端渲染，已验证）
 # ============================================================
 
-def fetch_from_baidu():
-    """从百度搜索结果提取排列五开奖号码（服务端渲染HTML，不会被拦截）"""
-    log("尝试百度搜索...")
+def fetch_from_cjcp():
+    """从彩经网移动端获取开奖号码 - 服务端渲染HTML"""
+    log("尝试彩经网移动端...")
     
-    url = 'https://www.baidu.com/s?wd=' + quote('排列五开奖号码')
-    html = _make_request(url, timeout=20, extra_headers={
-        'Referer': 'https://www.baidu.com/',
-    })
+    html = _make_request('https://m.cjcp.cn/kaijiang/pl5/', timeout=20)
     if not html or len(html) < 5000:
-        log("  百度返回内容过短，可能被拦截")
+        log("  彩经网返回内容过短")
         return None, None
     
-    # 精准匹配：期号和号码在200字符内，期号格式如 "26166期"
-    # 百度卡片中最新一期排在最前面，所以取第一个匹配
-    pattern = r'(\d{5})期.{0,200}?(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)'
-    matches = re.findall(pattern, html, re.DOTALL)
+    # 提取期号：<em>2026166期开奖</em>
+    period_m = re.search(r'(\d{7})期开奖', html)
+    if not period_m:
+        log("  未找到期号")
+        return None, None
     
-    if matches:
-        # 第一个匹配是最新一期（百度卡片中最新期排最前）
-        m = matches[0]
-        period_str = m[0]
-        digits = ''.join(m[1:6])
-        if len(digits) == 5 and digits.isdigit():
-            our_period = int('20' + period_str) if len(period_str) <= 5 else int(period_str)
-            winning4 = digits[:4]
-            log(f"  百度解析成功: 期{our_period} 号码{digits} -> {winning4}")
-            return winning4, our_period
+    our_period = int(period_m.group(1))
     
-    # 备用正则：匹配 "第XXXXX期"
-    pattern2 = r'第\s*(\d{5})\s*期.{0,300}?(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)'
-    matches2 = re.findall(pattern2, html, re.DOTALL)
-    if matches2:
-        m = matches2[0]
-        period_str = m[0]
-        digits = ''.join(m[1:6])
-        if len(digits) == 5 and digits.isdigit():
-            our_period = int('20' + period_str) if len(period_str) <= 5 else int(period_str)
-            winning4 = digits[:4]
-            log(f"  百度备用解析成功: 期{our_period} 号码{digits} -> {winning4}")
-            return winning4, our_period
+    # 提取开奖号码：<span class="qiu_red">2</span>... 格式
+    # 找期号后面的所有 qiu_red span
+    period_pos = period_m.start()
+    segment = html[period_pos:period_pos+5000]
     
-    log("  百度解析失败: 未匹配到开奖数据")
+    # 匹配连续的5个qiu_red span
+    num_matches = re.findall(r'<span class="qiu_red">(\d)</span>', segment)
+    if len(num_matches) >= 5:
+        digits = ''.join(num_matches[:5])
+        winning4 = digits[:4]
+        log(f"  彩经网成功: 期{our_period} 号码{digits} -> {winning4}")
+        return winning4, our_period
+    
+    # 备用：匹配文本中的号码格式
+    num_m = re.search(r'(\d{7})期开奖.*?(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)', segment, re.DOTALL)
+    if num_m:
+        digits = ''.join(num_m.groups()[1:6])
+        winning4 = digits[:4]
+        log(f"  彩经网备用成功: 期{our_period} 号码{digits} -> {winning4}")
+        return winning4, our_period
+    
+    log("  彩经网解析失败")
     return None, None
 
 # ============================================================
-#  数据源2：江苏体彩网（服务端渲染，直接含开奖号码）
+#  数据源2：江苏体彩网（服务端渲染）
 # ============================================================
 
 def fetch_from_jslottery():
-    """从江苏体彩网获取最新排列五开奖公告（服务端渲染）"""
+    """从江苏体彩网获取开奖公告"""
     log("尝试江苏体彩网...")
     
     html = _make_request('https://api.js-lottery.com/', timeout=20)
     if not html or len(html) < 3000:
         return None, None
     
-    # 找所有文章链接
     links = re.findall(r'href="(/cms/post-\d+\.html)"', html)
     
-    for link in links[:15]:  # 最多检查前15个
+    for link in links[:15]:
         full_url = 'https://api.js-lottery.com' + link
         detail = _make_request(full_url, timeout=15)
         if not detail or '排列5' not in detail:
@@ -131,34 +127,7 @@ def fetch_from_jslottery():
     return None, None
 
 # ============================================================
-#  数据源3：东方财富网（通过 web_fetch 验证过可用）
-# ============================================================
-
-def fetch_from_eastmoney():
-    """从东方财富网获取开奖号码（备用）"""
-    log("尝试东方财富网...")
-    
-    html = _make_request('https://caipiao.eastmoney.com/pub/Result/Category/pl5', timeout=20)
-    if not html or len(html) < 5000:
-        return None, None
-    
-    # 匹配期号和号码在同一上下文
-    pattern = r'(\d{5})期.{0,200}?(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)'
-    m = re.search(pattern, html, re.DOTALL)
-    if m:
-        period_str = m.group(1)
-        digits = ''.join(m.groups()[1:6])
-        if len(digits) == 5 and digits.isdigit():
-            our_period = int('20' + period_str)
-            winning4 = digits[:4]
-            log(f"  东方财富网成功: 期{our_period} 号码{digits} -> {winning4}")
-            return winning4, our_period
-    
-    log("  东方财富网解析失败")
-    return None, None
-
-# ============================================================
-#  数据源4：体彩官方API（备用）
+#  数据源3：体彩官方API（备用）
 # ============================================================
 
 def fetch_from_sporttery():
@@ -191,11 +160,9 @@ def fetch_from_sporttery():
 def fetch_winning_number():
     """多源获取最新开奖号码，返回 (4位数字, 期号) 或 (None, None)"""
     
-    # 数据源按优先级排序
     sources = [
-        ('百度搜索', fetch_from_baidu),
+        ('彩经网移动端', fetch_from_cjcp),
         ('江苏体彩网', fetch_from_jslottery),
-        ('东方财富网', fetch_from_eastmoney),
         ('体彩官方API', fetch_from_sporttery),
     ]
     
@@ -212,7 +179,7 @@ def fetch_winning_number():
     return None, None
 
 # ============================================================
-#  数据读写与更新
+#  数据读写与更新（与之前相同）
 # ============================================================
 
 def match_balanced_braces(text, start):
@@ -327,12 +294,11 @@ def calc_hits(sequences, winning):
 
 def main():
     log("=" * 50)
-    log("神仙连开奖号码自动填入任务开始 v3 (百度搜索版)")
+    log("神仙连开奖号码自动填入任务开始 v4 (彩经网版)")
     
     winning4, api_period = fetch_winning_number()
     if not winning4:
         log("所有数据源均未获取到开奖号码，跳过")
-        log("可能原因: 所有源均不可用或网络问题")
         return True
     
     data = load_data()
