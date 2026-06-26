@@ -1,46 +1,219 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
-神仙连 - 每日开奖号码自动填入脚本
-直接用GitHub Contents API读写repo数据文件，含期号校验
-四重API保底：体彩官方 + 灰鸟 + 彩经网 + 网页解析
+神仙连 - 每日开奖号码自动填入脚本 v3
+通过百度搜索爬取开奖号码（服务端渲染，绕过API拦截）
+备用：东方财富网、江苏体彩网、体彩官方API
 """
 
 import json
 import os
 import base64
 import ssl
+import re
 from datetime import datetime
 from urllib.request import Request, urlopen
+from urllib.parse import quote
 
 GH_TOKEN = os.environ.get('GH_TOKEN', os.environ.get('GIST_TOKEN', ''))
 REPO = 'ebupuba099-lang/shenxianlian'
 DATA_FILE = 'data/sxl_data.json'
 
-SPORTTERY_URL = 'https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry?gameNo=350133&provinceId=0&pageSize=1&is11=0'
-HUINIAO_URL = 'http://api.huiniao.top/interface/home/lotteryHistory?type=plw&page=1&limit=1'
-CJCP_URL = 'https://www.cjcp.com.cn/ajax/lottery/history?lotteryId=85&pageSize=10&pageNo=1'
-
 def log(msg):
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{now}] {msg}", flush=True)
 
-def _request(url, timeout=15):
-    """通用请求函数，支持SSL绕过"""
+def _make_request(url, timeout=15, parse_json=False, extra_headers=None):
+    """通用请求函数"""
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json, text/plain, */*'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Cache-Control': 'no-cache',
     }
+    if extra_headers:
+        headers.update(extra_headers)
     req = Request(url, headers=headers)
     try:
         resp = urlopen(req, timeout=timeout, context=ctx)
-        return json.loads(resp.read().decode('utf-8'))
+        raw = resp.read().decode('utf-8', errors='replace')
+        if parse_json:
+            return json.loads(raw)
+        return raw
     except Exception as e:
-        log(f"  请求失败 {url[:50]}...: {e}")
+        log(f"  请求失败 [{url[:60]}]: {e}")
         return None
+
+# ============================================================
+#  数据源1：百度搜索（最可靠，服务端渲染HTML）
+# ============================================================
+
+def fetch_from_baidu():
+    """从百度搜索结果提取排列五开奖号码（服务端渲染HTML，不会被拦截）"""
+    log("尝试百度搜索...")
+    
+    url = 'https://www.baidu.com/s?wd=' + quote('排列五开奖号码')
+    html = _make_request(url, timeout=20, extra_headers={
+        'Referer': 'https://www.baidu.com/',
+    })
+    if not html or len(html) < 5000:
+        log("  百度返回内容过短，可能被拦截")
+        return None, None
+    
+    # 精准匹配：期号和号码在200字符内，期号格式如 "26166期"
+    # 百度卡片中最新一期排在最前面，所以取第一个匹配
+    pattern = r'(\d{5})期.{0,200}?(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)'
+    matches = re.findall(pattern, html, re.DOTALL)
+    
+    if matches:
+        # 第一个匹配是最新一期（百度卡片中最新期排最前）
+        m = matches[0]
+        period_str = m[0]
+        digits = ''.join(m[1:6])
+        if len(digits) == 5 and digits.isdigit():
+            our_period = int('20' + period_str) if len(period_str) <= 5 else int(period_str)
+            winning4 = digits[:4]
+            log(f"  百度解析成功: 期{our_period} 号码{digits} -> {winning4}")
+            return winning4, our_period
+    
+    # 备用正则：匹配 "第XXXXX期"
+    pattern2 = r'第\s*(\d{5})\s*期.{0,300}?(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)'
+    matches2 = re.findall(pattern2, html, re.DOTALL)
+    if matches2:
+        m = matches2[0]
+        period_str = m[0]
+        digits = ''.join(m[1:6])
+        if len(digits) == 5 and digits.isdigit():
+            our_period = int('20' + period_str) if len(period_str) <= 5 else int(period_str)
+            winning4 = digits[:4]
+            log(f"  百度备用解析成功: 期{our_period} 号码{digits} -> {winning4}")
+            return winning4, our_period
+    
+    log("  百度解析失败: 未匹配到开奖数据")
+    return None, None
+
+# ============================================================
+#  数据源2：江苏体彩网（服务端渲染，直接含开奖号码）
+# ============================================================
+
+def fetch_from_jslottery():
+    """从江苏体彩网获取最新排列五开奖公告（服务端渲染）"""
+    log("尝试江苏体彩网...")
+    
+    html = _make_request('https://api.js-lottery.com/', timeout=20)
+    if not html or len(html) < 3000:
+        return None, None
+    
+    # 找所有文章链接
+    links = re.findall(r'href="(/cms/post-\d+\.html)"', html)
+    
+    for link in links[:15]:  # 最多检查前15个
+        full_url = 'https://api.js-lottery.com' + link
+        detail = _make_request(full_url, timeout=15)
+        if not detail or '排列5' not in detail:
+            continue
+        
+        num_m = re.search(r'开奖号码[：:]\s*(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)', detail)
+        period_m = re.search(r'第\s*(\d{5})\s*期', detail)
+        
+        if num_m and period_m:
+            digits = ''.join(num_m.groups())
+            our_period = int('20' + period_m.group(1))
+            winning4 = digits[:4]
+            log(f"  江苏体彩网成功: 期{our_period} 号码{digits} -> {winning4}")
+            return winning4, our_period
+    
+    log("  江苏体彩网未找到排列五开奖公告")
+    return None, None
+
+# ============================================================
+#  数据源3：东方财富网（通过 web_fetch 验证过可用）
+# ============================================================
+
+def fetch_from_eastmoney():
+    """从东方财富网获取开奖号码（备用）"""
+    log("尝试东方财富网...")
+    
+    html = _make_request('https://caipiao.eastmoney.com/pub/Result/Category/pl5', timeout=20)
+    if not html or len(html) < 5000:
+        return None, None
+    
+    # 匹配期号和号码在同一上下文
+    pattern = r'(\d{5})期.{0,200}?(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)'
+    m = re.search(pattern, html, re.DOTALL)
+    if m:
+        period_str = m.group(1)
+        digits = ''.join(m.groups()[1:6])
+        if len(digits) == 5 and digits.isdigit():
+            our_period = int('20' + period_str)
+            winning4 = digits[:4]
+            log(f"  东方财富网成功: 期{our_period} 号码{digits} -> {winning4}")
+            return winning4, our_period
+    
+    log("  东方财富网解析失败")
+    return None, None
+
+# ============================================================
+#  数据源4：体彩官方API（备用）
+# ============================================================
+
+def fetch_from_sporttery():
+    """从体彩官方API获取"""
+    log("尝试体彩官方API...")
+    result = _make_request(
+        'https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry?gameNo=350133&provinceId=0&pageSize=1&is11=0',
+        timeout=15, parse_json=True
+    )
+    if result:
+        try:
+            if result.get('value') and result['value'].get('list'):
+                latest = result['value']['list'][0]
+                result_str = latest.get('lotteryDrawResult', '')
+                draw_num = latest.get('lotteryDrawNum', '')
+                if result_str:
+                    digits = result_str.replace(' ', '')
+                    if len(digits) >= 4:
+                        period = int('20' + draw_num) if draw_num else None
+                        log(f"  体彩官方API成功: 期{period} 号码{result_str}")
+                        return digits[:4], period
+        except Exception as e:
+            log(f"  体彩官方API解析失败: {e}")
+    return None, None
+
+# ============================================================
+#  主获取函数
+# ============================================================
+
+def fetch_winning_number():
+    """多源获取最新开奖号码，返回 (4位数字, 期号) 或 (None, None)"""
+    
+    # 数据源按优先级排序
+    sources = [
+        ('百度搜索', fetch_from_baidu),
+        ('江苏体彩网', fetch_from_jslottery),
+        ('东方财富网', fetch_from_eastmoney),
+        ('体彩官方API', fetch_from_sporttery),
+    ]
+    
+    for name, func in sources:
+        try:
+            winning4, period = func()
+            if winning4 and period:
+                log(f"{name}成功获取: 期号={period}, 号码={winning4}")
+                return winning4, period
+        except Exception as e:
+            log(f"{name}异常: {e}")
+    
+    log("所有数据源均未获取到开奖号码")
+    return None, None
+
+# ============================================================
+#  数据读写与更新
+# ============================================================
 
 def match_balanced_braces(text, start):
     count = 0
@@ -75,32 +248,24 @@ def update_index_html(data):
         target = '<script id="embedded-data" type="application/json">'
         idx = html_content.find(target)
         if idx < 0:
-            log("未找到 embedded-data script 标签，无法更新")
+            log("未找到 embedded-data script 标签")
             return False
         
         brace_start = idx + len(target)
         matched = match_balanced_braces(html_content, brace_start)
         if not matched:
-            log("无法匹配 S 对象的平衡花括号")
+            log("无法匹配 S 对象")
             return False
         
         json_end = brace_start + len(matched)
-        script_end = html_content.find('</script>', json_end)
-        if script_end < 0:
-            log("未找到 </script> 结束标签")
-            return False
-        
-        old_json = html_content[brace_start:json_end]
-        new_statement = s_json
-        new_html = html_content[:brace_start] + new_statement + html_content[json_end:]
+        new_html = html_content[:brace_start] + s_json + html_content[json_end:]
         
         if new_html == html_content:
-            log("index.html无需更新")
             return True
         
         encoded = base64.b64encode(new_html.encode('utf-8')).decode('utf-8')
         body = json.dumps({
-            'message': 'auto: update initial S data in index.html',
+            'message': 'auto: update embedded data in index.html',
             'content': encoded,
             'sha': html_sha
         }).encode('utf-8')
@@ -110,11 +275,10 @@ def update_index_html(data):
         )
         resp2 = urlopen(put_req, timeout=30)
         if resp2.status == 200:
-            log("index.html初始数据已更新")
+            log("index.html 已更新")
             return True
-        else:
-            log(f"index.html更新失败: HTTP {resp2.status}")
-            return False
+        log(f"index.html更新失败: HTTP {resp2.status}")
+        return False
     except Exception as e:
         log(f"更新index.html异常: {e}")
         return False
@@ -161,84 +325,14 @@ def calc_hits(sequences, winning):
         hits[pos] = hit_level
     return hits
 
-def fetch_winning_number():
-    """获取最新开奖号码（四重保底），返回 (4位数字, API期号, 开奖日期) 或 (None, None, '')"""
-    
-    # 1. 体彩官方API
-    log("尝试体彩官方API...")
-    result = _request(SPORTTERY_URL)
-    if result:
-        try:
-            if result.get('value') and result['value'].get('list'):
-                latest = result['value']['list'][0]
-                result_str = latest.get('lotteryDrawResult', '')
-                draw_num = latest.get('lotteryDrawNum', '')
-                if result_str:
-                    digits = result_str.replace(' ', '')
-                    if len(digits) >= 4:
-                        winning4 = digits[:4]
-                        period = int('20' + draw_num) if draw_num else None
-                        log(f"  体彩官方成功: 期号={draw_num}(->{period}), 号码={result_str}")
-                        return winning4, period, latest.get('lotteryDrawTime', '')
-        except Exception as e:
-            log(f"  体彩官方解析失败: {e}")
-    
-    # 2. 灰鸟API
-    log("尝试灰鸟API...")
-    result = _request(HUINIAO_URL)
-    if result:
-        try:
-            d = result.get('data', {})
-            last = None
-            if isinstance(d, dict):
-                last = d.get('last')
-                if not last and d.get('data', {}).get('list'):
-                    last = d['data']['list'][0]
-            elif isinstance(d, list) and len(d) > 0:
-                last = d[0]
-            if last:
-                code = last.get('code', '')
-                one, two, three, four = last.get('one',''), last.get('two',''), last.get('three',''), last.get('four','')
-                winning4 = f"{one}{two}{three}{four}"
-                period = int('20' + code) if code else None
-                if len(winning4) == 4 and winning4.isdigit():
-                    draw_date = last.get('day', '')
-                    log(f"  灰鸟API成功: 期号={code}(->{period}), 号码={one}{two}{three}{four}{last.get('five','')}")
-                    return winning4, period, draw_date
-        except Exception as e:
-            log(f"  灰鸟API解析失败: {e}")
-    
-    # 3. 彩经网API
-    log("尝试彩经网API...")
-    result = _request(CJCP_URL)
-    if result:
-        try:
-            items = result.get("data", {}).get("list", [])
-            if items:
-                item = items[0]
-                period_full = str(item.get("issue", ""))
-                period = period_full[-3:] if len(period_full) >= 3 else period_full
-                period = int('20' + period) if period else None
-                number = str(item.get("drawCode", "")).replace(",", "").replace(" ", "")
-                if number and len(number) >= 4:
-                    winning4 = number[:4]
-                    log(f"  彩经网成功: 期号={period_full}(->{period}), 号码={number}")
-                    return winning4, period, ''
-        except Exception as e:
-            log(f"  彩经网解析失败: {e}")
-    
-    log("所有API均未获取到开奖号码")
-    return None, None, ''
-
 def main():
     log("=" * 50)
-    log("神仙连开奖号码自动填入任务开始")
+    log("神仙连开奖号码自动填入任务开始 v3 (百度搜索版)")
     
-    winning4, api_period, draw_date = fetch_winning_number()
+    winning4, api_period = fetch_winning_number()
     if not winning4:
-        log("所有API均未获取到开奖号码，跳过")
-        log("可能原因: GitHub Actions IP被国内API安全策略拦截")
-        log("请在本地环境手动运行: python scripts/lottery.py")
+        log("所有数据源均未获取到开奖号码，跳过")
+        log("可能原因: 所有源均不可用或网络问题")
         return True
     
     data = load_data()
@@ -246,35 +340,22 @@ def main():
     current_winning = data.get('winning', '')
     
     log(f"当前期数: {current_period}, 当前开奖号: {'(空)' if not current_winning else current_winning}")
-    log(f"API期号: {api_period}, 开奖号: {winning4}")
+    log(f"爬取到期号: {api_period}, 开奖号: {winning4}")
     
     if current_winning:
         log(f"当前期已有开奖号 {current_winning}，跳过")
         return True
     
-    BASE_DATE = datetime(2026, 5, 21)
-    if draw_date:
-        try:
-            draw_dt = datetime.strptime(draw_date, '%Y-%m-%d')
-            api_our_period = 2026131 + (draw_dt - BASE_DATE).days
-            log(f"API开奖日期: {draw_date} -> 我们的期号: {api_our_period}")
-        except:
-            api_our_period = current_period
-            log(f"日期解析失败，使用当前期号: {current_period}")
-    else:
-        api_our_period = current_period - 1
-        log(f"无开奖日期，假设为前一期: {api_our_period}")
-    
-    if api_our_period == current_period:
+    if api_period == current_period:
         target_period = current_period
     else:
-        target_period = api_our_period
+        target_period = api_period
         history = data.get('history', [])
         existing = [h for h in history if h.get('period') == target_period]
         if existing and existing[0].get('winning'):
             log(f"期{target_period}已有开奖号 {existing[0]['winning']}，跳过")
             return True
-        log(f"开奖号属于期{target_period}，非当前期{current_period}，补填历史")
+        log(f"开奖号属于期{target_period}，非当前期{current_period}，填入历史")
     
     if target_period == current_period:
         data['winning'] = winning4
@@ -292,7 +373,7 @@ def main():
                     existing[0]['hits'] = calc_hits(existing[0]['sequences'], winning4)
                 else:
                     existing[0]['hits'] = hits
-            log(f"补填历史期 {target_period} 开奖号 {winning4}")
+            log(f"填入历史期 {target_period} 开奖号 {winning4}")
         else:
             hist_entry = {
                 'period': target_period,
