@@ -236,7 +236,8 @@ def main():
                 'hits': data.get('hits', {})
             }
             history.insert(0, hist_entry)
-            # 不再限制历史记录条数
+            if len(history) > 7:
+                history = history[:7]
             data['history'] = history
 
     data['period'] = auto_period
