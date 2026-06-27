@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "functions": {
     "api/pl5.js": {
       "memory": 256,
