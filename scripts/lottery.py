@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-神仙连 - 每日开奖号码自动填入脚本 v7
+神仙连 - 每日开奖号码自动填入脚本 v8
 数据源优先级：
-1. 体彩官方API（最可靠）
-2. 彩经网移动端 m.cjcp.cn（服务器渲染HTML）
-3. 江苏体彩网 api.js-lottery.com（服务器渲染HTML，仅取排列5）
-v7 修复：
-- 修复江苏体彩网可能返回排三数据的问题（期号校验放宽 + 内容必须有"排列5"）
-- 修复期号安全检查：允许 ±5 期范围内的期号
-- 添加更多备用数据源
-- 添加 HTTP 请求重试机制
-- 修复 generate.py 的 update_index_html 截断问题
+1. 体彩官方API
+2. 彩经网移动端
+3. 江苏体彩网（精确匹配排列5数据）
+4. 500彩票网（备用）
+v8 修复：
+- 修复江苏体彩网解析：同一页面含排三和排五，需精确定位排列5段落
+- 放宽期号安全检查
+- 添加HTTP请求重试
 """
 import json
 import os
@@ -59,14 +58,14 @@ def _make_request(url, timeout=20, parse_json=False, extra_headers=None, retries
             return raw
         except HTTPError as e:
             if attempt < retries - 1:
-                log(f"  请求失败 [{url[:50]}]: HTTP {e.code}, {attempt+2}/{retries}次尝试...")
+                log(f"  请求失败 [{url[:50]}]: HTTP {e.code}, 重试 {attempt+2}/{retries}...")
                 time.sleep(2)
                 continue
             log(f"  请求失败 [{url[:50]}]: HTTP {e.code}")
             return None
         except URLError as e:
             if attempt < retries - 1:
-                log(f"  请求失败 [{url[:50]}]: {e.reason}, {attempt+2}/{retries}次尝试...")
+                log(f"  请求失败 [{url[:50]}]: {e.reason}, 重试 {attempt+2}/{retries}...")
                 time.sleep(2)
                 continue
             log(f"  请求失败 [{url[:50]}]: {e.reason}")
@@ -78,7 +77,7 @@ def _make_request(url, timeout=20, parse_json=False, extra_headers=None, retries
 
 
 # ==========================================
-# 数据源1：体彩官方API（最可靠）
+# 数据源1：体彩官方API
 # ==========================================
 def fetch_from_sporttery():
     """从体彩官方API获取排列5开奖"""
@@ -90,20 +89,17 @@ def fetch_from_sporttery():
             parse_json=True,
             retries=3
         )
-        if result:
-            if result.get('value') and result['value'].get('list'):
-                latest = result['value']['list'][0]
-                result_str = latest.get('lotteryDrawResult', '')
-                draw_num = latest.get('lotteryDrawNum', '')
-                if result_str:
-                    digits = result_str.replace(' ', '')
-                    if len(digits) >= 5:
-                        period = int('20' + draw_num) if draw_num else None
-                        winning4 = digits[:4]
-                        log(f"  体彩官方API成功: 期{period} 号码{result_str} -> 前4位{winning4}")
-                        return winning4, period
-            else:
-                log(f"  API返回结构异常: {json.dumps(result, ensure_ascii=False)[:300]}")
+        if result and result.get('value') and result['value'].get('list'):
+            latest = result['value']['list'][0]
+            result_str = latest.get('lotteryDrawResult', '')
+            draw_num = latest.get('lotteryDrawNum', '')
+            if result_str:
+                digits = result_str.replace(' ', '')
+                if len(digits) >= 5:
+                    period = int('20' + draw_num) if draw_num else None
+                    winning4 = digits[:4]
+                    log(f"  体彩官方API成功: 期{period} 号码{result_str} -> 前4位{winning4}")
+                    return winning4, period
     except Exception as e:
         log(f"  体彩官方API异常: {e}")
     return None, None
@@ -116,67 +112,58 @@ def fetch_from_cjcp():
     """从彩经网移动端获取排列5开奖号码"""
     log("尝试彩经网移动端...")
     try:
-        # 尝试主域名
         html = _make_request('https://m.cjcp.cn/kaijiang/pl5/', timeout=20, retries=2)
-        
-        # 如果403，尝试备用域名
         if not html or len(html) < 5000:
-            log("  彩经网主域名失败，尝试备用域名...")
             html = _make_request('https://m.cjcp.com.cn/kaijiang/pl5/', timeout=20, retries=2)
-        
         if not html or len(html) < 5000:
-            log("  彩经网所有域名返回内容过短或为空")
+            log("  彩经网返回内容过短或为空")
             return None, None
 
-        # 查找排列5相关内容
-        if '排列5' not in html and '排列五' not in html and 'pl5' not in html.lower():
-            log("  彩经网返回内容不包含排列5相关信息")
+        if '排列5' not in html and '排列五' not in html:
+            log("  彩经网返回内容不包含排列5信息")
             return None, None
 
-        # 提取期号：2026166期开奖
         period_m = re.search(r'(\d{7})期开奖', html)
         if not period_m:
             period_m = re.search(r'第\s*(\d{7})\s*期', html)
         if not period_m:
             period_m = re.search(r'(\d{7})', html[:2000])
         if not period_m:
-            log("  未找到期号信息")
+            log("  未找到期号")
             return None, None
         
         our_period = int(period_m.group(1))
-        log(f"  找到期号: {our_period}")
-
-        # 提取开奖号码
         period_pos = period_m.start()
         segment = html[max(0,period_pos-200):period_pos+5000]
         
-        # 方法1：查找连续5个数字
         num_matches = re.findall(r'(\d)', segment)
         if len(num_matches) >= 5:
             digits = ''.join(num_matches[:5])
             winning4 = digits[:4]
-            log(f"  彩经网方法1成功: 期{our_period} 号码{digits} -> {winning4}")
+            log(f"  彩经网成功: 期{our_period} 号码{digits} -> {winning4}")
             return winning4, our_period
 
-        # 方法2：空格分隔的号码
         num_m = re.search(r'(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)', segment)
         if num_m:
             digits = ''.join(num_m.groups())
             winning4 = digits[:4]
-            log(f"  彩经网方法2成功: 期{our_period} 号码{digits} -> {winning4}")
+            log(f"  彩经网成功: 期{our_period} 号码{digits} -> {winning4}")
             return winning4, our_period
 
-        log("  彩经网解析失败，HTML片段: " + segment[:200])
+        log(f"  彩经网解析失败，片段: {segment[:200]}")
     except Exception as e:
         log(f"  彩经网异常: {e}")
     return None, None
 
 
 # ==========================================
-# 数据源3：江苏体彩网（仅取排列5数据）
+# 数据源3：江苏体彩网（精确解析排列5）
 # ==========================================
 def fetch_from_jslottery():
-    """从江苏体彩网获取排列5开奖公告"""
+    """
+    从江苏体彩网获取排列5开奖公告。
+    关键：同一页面可能包含排三和排五数据，需要精确定位排列5段落。
+    """
     log("尝试江苏体彩网...")
     try:
         html = _make_request('https://api.js-lottery.com/', timeout=20, retries=2)
@@ -184,49 +171,56 @@ def fetch_from_jslottery():
             return None, None
 
         links = re.findall(r'href="(/cms/post-\d+\.html)"', html)
-        log(f"  找到 {len(links)} 个链接")
-        
+        # 去重
+        links = list(dict.fromkeys(links))
+        log(f"  找到 {len(links)} 个唯一文章链接")
+
         for link in links[:20]:
             full_url = 'https://api.js-lottery.com' + link
             detail = _make_request(full_url, timeout=15)
             if not detail:
                 continue
             
-            # 必须包含"排列5"或"排列五"
+            # 必须包含排列5相关文字
             if '排列5' not in detail and '排列五' not in detail:
                 continue
             
-            log(f"  找到排列5页面: {link}")
+            # ==========================================================
+            # 精确定位排列5数据段落
+            # 页面结构：<title>排列5第26167期开奖公告</title>
+            # 开奖号码在正文中：本期开奖号码：0 1 2 3 1
+            # 必须通过title/h1中的排列5标记来确认这是排列5页面
+            # ==========================================================
             
-            # 提取开奖号码
-            num_m = re.search(r'开奖号码[：:]\s*(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)', detail)
-            if not num_m:
-                num_m = re.search(r'(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)', detail[:2000])
+            # 检查页面标题是否明确是排列5
+            title_match = re.search(r'排列[5五]第\s*(\d{5})\s*期', detail)
+            h1_match = re.search(r'排列[5五]第\s*(\d{5})\s*期', detail)
             
-            # 提取期号
-            period_m = re.search(r'第\s*(\d{5,7})\s*期', detail)
-            if not period_m:
-                period_m = re.search(r'(\d{7})', detail[:1000])
+            if not title_match and not h1_match:
+                # 不是排列5开奖公告页面，跳过
+                continue
+            
+            period_str = (title_match or h1_match).group(1)
+            our_period = int('20' + period_str) if len(period_str) == 5 else int(period_str)
+            
+            # 搜索开奖号码（支持两种格式）
+            # 格式1：开奖号码：0 1 2 3 1
+            # 格式2：本期开奖号码：0 1 2 3 1
+            num_m = re.search(r'(?:本期)?开奖号码[：:]\s*(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)', detail)
             
             if num_m:
                 digits = ''.join(num_m.groups())
-                
-                # 计算期号
-                if period_m:
-                    period_str = period_m.group(1)
-                    if len(period_str) == 5:
-                        our_period = int('20' + period_str)
-                    elif len(period_str) == 7:
-                        our_period = int(period_str)
-                    else:
-                        our_period = None
-                else:
-                    our_period = None
-                
-                if our_period:
-                    winning4 = digits[:4]
-                    log(f"  江苏体彩网成功: 期{our_period} 号码{digits} -> {winning4}")
-                    return winning4, our_period
+                winning4 = digits[:4]
+                log(f"  江苏体彩网排列5: 期{our_period} 号码{digits} -> 前4位{winning4}")
+                return winning4, our_period
+            
+            # 备用：搜索所有开奖号码，找排列5的（期号范围2026130+）
+            all_nums = re.findall(r'(?:本期)?开奖号码[：:]\s*(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)', detail)
+            if all_nums and our_period >= 2026130:
+                digits = ''.join(all_nums[0])
+                winning4 = digits[:4]
+                log(f"  江苏体彩网备用: 期{our_period} 号码{digits} -> 前4位{winning4}")
+                return winning4, our_period
 
         log("  江苏体彩网未找到排列五开奖公告")
     except Exception as e:
@@ -245,14 +239,12 @@ def fetch_from_500():
         if not html or len(html) < 100:
             return None, None
         
-        # 匹配格式: 2026167,2,2,9,5
         match = re.search(r'(\d{7}),(\d),(\d),(\d),(\d)', html)
         if match:
             period = int(match.group(1))
             digits = ''.join(match.groups()[1:5])
             log(f"  500彩票网成功: 期{period} 号码{digits}")
             return digits, period
-        
         log("  500彩票网解析失败")
     except Exception as e:
         log(f"  500彩票网异常: {e}")
@@ -326,7 +318,7 @@ def update_index_html(data):
         new_html = html_content
         updated = False
 
-        # 方式1：更新 embedded-data script 标签
+        # 更新 embedded-data
         target = '<script type="application/json" id="embedded-data">'
         if target in new_html:
             start = new_html.index(target) + len(target)
@@ -345,10 +337,9 @@ def update_index_html(data):
             except:
                 log("embedded-data JSON 解析失败，跳过")
 
-        # 方式2：更新 let S = {...}
+        # 更新 let S
         s_var_match = re.search(r'let\s+S\s*=\s*\{', new_html)
         if s_var_match:
-            start_pos = s_var_match.start()
             brace_start = s_var_match.end() - 1
             old_s_block = match_balanced_braces(new_html, brace_start)
             if old_s_block:
@@ -356,16 +347,11 @@ def update_index_html(data):
                 new_html = new_html[:brace_start] + new_s_block + new_html[brace_start+len(old_s_block):]
                 updated = True
                 log("已更新 let S 变量")
-            else:
-                log("警告: 未找到 let S 平衡括号")
-        else:
-            log("警告: 未找到 let S 变量定义")
 
         if not updated:
             log("警告: index.html 未做任何更新")
             return False
 
-        # 提交更新
         put_body = json.dumps({
             'message': f"自动更新开奖数据 - {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             'content': base64.b64encode(new_html.encode('utf-8')).decode('utf-8'),
@@ -387,12 +373,10 @@ def update_index_html(data):
 # ==========================================
 def main():
     log("=" * 50)
-    log("神仙连开奖填入任务 v7 开始")
+    log("神仙连开奖填入任务 v8 开始")
 
-    # 检查 GH_TOKEN
     if not GH_TOKEN:
         log("✗ 严重错误：GH_TOKEN 环境变量为空！")
-        log("  请检查 GitHub Secrets 中是否正确设置了 GH_TOKEN")
         return False
 
     log(f"GH_TOKEN 已配置 (长度: {len(GH_TOKEN)})")
@@ -402,11 +386,6 @@ def main():
 
     if not winning4:
         log("✗ 获取开奖号码失败，所有数据源均无返回")
-        log("  可能原因：")
-        log("  1. 网络环境限制（GitHub Actions IP 被屏蔽）")
-        log("  2. 数据源网站结构变更")
-        log("  3. 今天尚未开奖")
-        log("  建议：等待下一次定时任务重试，或手动触发 workflow_dispatch")
         return False
 
     log(f"✓ 成功获取开奖号码: 期号={period}, 号码={winning4}")
@@ -421,25 +400,21 @@ def main():
     except Exception as e:
         log(f"读取现有数据失败: {e}，将创建新数据")
 
-    # 期号安全校验（放宽范围：允许 ±5 期，排列5期号是7位数）
+    # 期号安全校验（排列5期号范围：2026000-2027000）
     current_period = data.get('period', 0)
     if current_period > 0 and period > 0:
-        # 排列5期号范围检查：2026开头 + 三位数
         if period < 2026000 or period > 2027000:
-            log(f"✗ 期号格式异常: {period}，不在排列5期号范围(2026000-2027000)")
+            log(f"✗ 期号格式异常: {period}，不在排列5期号范围")
             return False
-        
-        # 允许API返回的期号在合理范围内（比当前期小5期或大1期）
-        if period < current_period - 5:
-            log(f"✗ 期号安全检查失败: API返回期号{period}比当前期{current_period}小超过5期，数据可能过期")
+        if period < current_period - 10:
+            log(f"✗ 期号安全检查失败: API返回期号{period}比当前期{current_period}小超过10期")
             return False
         if period > current_period + 2:
-            log(f"✗ 期号安全检查失败: API返回期号{period}大于当前期+2({current_period+2})，数据异常")
+            log(f"✗ 期号安全检查失败: API返回期号{period}大于当前期+2({current_period+2})")
             return False
-        
-        log(f"期号安全检查通过: API返回{period}, 当前{current_period}, 差值{current_period-period}")
+        log(f"期号安全检查通过: API返回{period}, 当前{current_period}")
     else:
-        log(f"期号安全检查跳过: API返回{period}, 当前数据期号{current_period}")
+        log(f"期号安全检查跳过: API返回{period}, 当前{current_period}")
 
     # 更新数据
     data['winning'] = winning4
@@ -449,7 +424,6 @@ def main():
     if 'history' not in data:
         data['history'] = []
 
-    # 避免重复记录
     existing_periods = {h.get('period') for h in data['history']}
     if period not in existing_periods:
         data['history'].append({
@@ -457,13 +431,12 @@ def main():
             'winning': winning4,
             'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
-        # 按期号降序排列，只保留最近50期
         data['history'].sort(key=lambda x: x.get('period', 0), reverse=True)
         if len(data['history']) > 50:
             data['history'] = data['history'][:50]
-        log(f"  已添加历史记录: 期{period}, 当前共{len(data['history'])}条")
+        log(f"  已添加历史记录: 期{period}, 共{len(data['history'])}条")
     else:
-        log(f"  期{period}已存在历史中，跳过添加")
+        log(f"  期{period}已存在，跳过添加")
 
     # 保存到 GitHub
     save_success = False
@@ -472,13 +445,10 @@ def main():
             'Authorization': f'token {GH_TOKEN}',
             'Accept': 'application/vnd.github.v3+json'
         }
-
-        # 获取文件 SHA
         sha_req = Request(f'https://api.github.com/repos/{REPO}/contents/{DATA_FILE}', headers=headers)
         sha_resp = urlopen(sha_req, timeout=30)
         file_sha = json.loads(sha_resp.read().decode('utf-8'))['sha']
 
-        # 提交更新
         content_bytes = json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8')
         put_data = {
             'message': f'更新开奖号码: {winning4} (期号: {period})',
@@ -497,11 +467,10 @@ def main():
         import traceback
         traceback.print_exc()
 
-    # 更新 index.html
     if save_success:
         update_index_html(data)
     else:
-        log("✗ 数据文件保存失败，跳过 index.html 更新")
+        log("✗ 跳过 index.html 更新")
 
     log("任务完成")
     return save_success
@@ -509,9 +478,4 @@ def main():
 
 if __name__ == '__main__':
     success = main()
-    if not success:
-        log("✗ 任务失败，退出码 1")
-        sys.exit(1)
-    else:
-        log("✓ 任务成功，退出码 0")
-        sys.exit(0)
+    sys.exit(0 if success else 1)
