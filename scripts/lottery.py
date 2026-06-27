@@ -4,12 +4,16 @@
 多数据源降级 + 历史缓存兜底，最大化成功率
 
 数据源优先级：
+0. Vercel 代理 API (最稳定，Vercel IP 不会被墙)
 1. 彩经网移动端 (m.cjcp.com.cn)
 2. 江苏体彩网 (api.js-lottery.com)
 3. 500彩票网 (datachart.500.com)
 4. 体彩官方API (webapi.sporttery.cn)
 5. 上次缓存兜底 (data/sxl_data.json 中的 winning)
 """
+
+# Vercel 部署后替换为你的实际地址
+VERCEL_API = 'https://shenxianlian.vercel.app/api/pl5'
 
 import json, os, sys, ssl, re, time, base64, traceback
 from urllib.request import Request, urlopen
@@ -51,6 +55,26 @@ def http_get(url, retries=3, timeout=20):
             log(f'  网络错误, 重试 {i+2}/{retries}')
             time.sleep(2)
     return None, 0
+
+# ==========================================
+# 数据源0: Vercel 代理 API (最优先)
+# ==========================================
+def fetch_vercel():
+    """Vercel Serverless 代理，用 Vercel IP 抓取数据"""
+    try:
+        html, status = http_get(VERCEL_API, retries=2, timeout=15)
+        if not html:
+            return None, None
+        data = json.loads(html)
+        if data.get('success') and data.get('winning'):
+            period = data.get('period', 0)
+            winning = data.get('winning', '')
+            source = data.get('source', 'Vercel')
+            log(f'  Vercel代理({source}): 期{period} 号{winning}')
+            return winning, period
+    except Exception as e:
+        log(f'  Vercel API异常: {e}')
+    return None, None
 
 # ==========================================
 # 数据源1: 彩经网移动端
@@ -245,6 +269,7 @@ def main():
     
     # 依次尝试数据源
     sources = [
+        ('Vercel代理API', fetch_vercel),
         ('彩经网移动端', fetch_cjcp),
         ('江苏体彩网', fetch_js_lottery),
         ('500彩票网', fetch_500),
