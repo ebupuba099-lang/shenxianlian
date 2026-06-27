@@ -1,11 +1,9 @@
 {
   "functions": {
     "api/pl5.js": {
-      "memory": 128,
-      "maxDuration": 30
+      "memory": 256,
+      "maxDuration": 30,
+      "runtime": "nodejs20.x"
     }
-  },
-  "rewrites": [
-    { "source": "/api/pl5", "destination": "/api/pl5" }
-  ]
+  }
 }
