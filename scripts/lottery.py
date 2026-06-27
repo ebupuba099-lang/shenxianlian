@@ -69,10 +69,20 @@ def fetch_cjcp():
         try:
             html, _ = http_get(url, retries=1)
             if not html or len(html) < 3000: continue
+            
+            # 格式1: 传统文本格式 第2026168期...开奖号码：0 1 2 3 1
             m = re.search(r'第\s*(\d{7})\s*期[\s\S]*?开奖号码[：:]?\s*(\d)\s+(\d)\s+(\d)\s+(\d)\s+(\d)', html)
             if m:
                 period = int(m.group(1))
                 digits = ''.join(m.groups()[1:])
+                if valid(period, digits): return digits[:4], period
+            
+            # 格式2: span标签格式 <span class="qiu_red">1</span>
+            period_m = re.search(r'第(\d{7})期开奖', html)
+            num_ms = re.findall(r'qiu_red">(\d)</span>', html)
+            if period_m and len(num_ms) >= 5:
+                period = int(period_m.group(1))
+                digits = ''.join(num_ms[:5])
                 if valid(period, digits): return digits[:4], period
         except: continue
     return None, None
