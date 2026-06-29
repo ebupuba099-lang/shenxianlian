@@ -188,6 +188,33 @@ def github_put_raw(path, b64_content, sha, msg):
     resp = urlopen(req, timeout=30, context=ctx)
     return json.loads(resp.read().decode())
 
+
+# ==========================================
+# 粒数计算（与前端 calcHits 逻辑一致）
+# ==========================================
+def calc_hits_py(sequences, winning):
+    """计算每个位置的粒数"""
+    hits = {}
+    if not winning or len(winning) != 4:
+        return hits
+    pos_map = [('千', 0), ('百', 1), ('十', 2), ('个', 3)]
+    for pos_name, idx in pos_map:
+        seq = sequences.get(pos_name, '')
+        if not seq:
+            hits[pos_name] = 0
+            continue
+        nums = seq.split(' ')
+        target = winning[idx]
+        found = False
+        for j in range(len(nums) - 1, -1, -1):
+            if target in nums[j]:
+                hits[pos_name] = len(nums[j])
+                found = True
+                break
+        if not found:
+            hits[pos_name] = 0
+    return hits
+
 # ==========================================
 # 数据格式适配
 # ==========================================
@@ -268,11 +295,12 @@ def set_winning(data, fmt, winning4, period, cp):
         
     else:  # shenxianlian
         data['winning'] = winning4
-        data['hits'] = {}
+        data['hits'] = calc_hits_py(data.get('sequences', {}), winning4)
         history = data.get('history', [])
         for h in history:
             if h['period'] == cp:
                 h['winning'] = winning4
+                h['hits'] = calc_hits_py(h.get('sequences', {}), winning4)
                 break
         else:
             history.insert(0, {'period': cp, 'winning': winning4, 'time': now_str, 'hits': {}})
