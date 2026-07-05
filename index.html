@@ -949,14 +949,19 @@ window.addEventListener('DOMContentLoaded', () => {
 // ========== 自动期号变化检测与新期生成 ==========
 
 // 生成新一期数据
+// 已禁用: 页面JS不再自动生成新期，由腾讯云云函数统一生成（每天6:29）
+// 防止页面与云端不同步
 function generateNewPeriod() {
-    // 生成新一期序列，历史数据已从Gist加载，不修改
+    // 不再自动生成，提示用户等待云端同步
+    const cloudPeriod = calcAutoPeriod();
+    showToast('新期号 ' + cloudPeriod + ' 由云端生成中，请稍后刷新页面');
+    return;
+    // 以下代码保留但不会执行
+    /*
     const newPeriod = calcAutoPeriod();
     if (newPeriod <= S.period) return;
-    
     S.period = newPeriod;
     S.winning = '';
-    // 自动生成千百十个位递减序列
     const positions = ['千','百','十','个'];
     positions.forEach(pos => {
         const digits = shuffle([0,1,2,3,4,5,6,7,8,9]);
@@ -970,24 +975,20 @@ function generateNewPeriod() {
     renderHistoryList();
     renderPosterHistory();
     showToast('已自动生成新一期: ' + S.period + '期');
+    */
 }
 
 // 检查是否需要生成新期（每天6点后自动切换）
+// 已禁用: 由云端统一控制，页面不再切换
 function checkAndSwitchPeriod() {
-    const currentPeriod = calcAutoPeriod();
-    
-    // 如果当前显示的期号小于自动计算的期号，才切换
-    if (S.period < currentPeriod) {
-        generateNewPeriod();
-        return true;
-    }
+    return false;
     
     return false;
 }
 </script>
 
 <!-- 云同步弹窗 -->
-<!--scf-sync:1783229851-->
+<!--scf-sync:1783230129-->
 </body>
 </html>
 
