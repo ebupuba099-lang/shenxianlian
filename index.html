@@ -843,8 +843,8 @@ async function autoLoadFromCloud() {
         const cloudData = await resp.json();
         if (!cloudData || !cloudData.period) throw new Error('Invalid data');
         
-        // 仅当云端期号更新时才更新期号
-        if (cloudData.period > S.period) {
+        // 期数以云端数据为准（开奖驱动连续递增, 云端期号即权威期号）
+        if (cloudData.period !== S.period) {
             S.period = cloudData.period;
         }
         
